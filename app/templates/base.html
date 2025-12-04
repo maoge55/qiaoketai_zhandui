@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}敲可爱战队{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+<header class="qk-header">
+  <div class="qk-container qk-header-inner">
+    <a href="/" class="qk-logo">
+      <span class="qk-logo-main">敲可爱战队</span>
+      <span class="qk-logo-sub">Hearthstone Arena Squad</span>
+    </a>
+    <nav class="qk-nav">
+      <a href="/">主城大厅</a>
+      <a href="/guides">竞技场宝典</a>
+      <a href="/cards">卡牌评测</a>
+      <a href="/legends">荣耀殿堂</a>
+      <a href="/members">战队名册</a>
+      <a href="/join">加入战队</a>
+    </nav>
+    <div class="qk-user">
+      {% if current_user %}
+        <div class="qk-user-dropdown">
+          <div class="avatar" tabindex="0" aria-label="用户菜单">{{ current_user.nickname[0] if current_user.nickname else 'Q' }}</div>
+          <span class="nick" tabindex="0">{{ current_user.nickname }}</span>
+          <div class="qk-user-menu" aria-label="用户菜单">
+            <a href="/profile">个人资料</a>
+            <a href="/members/{{ current_user.id }}">我的主页</a>
+            {% if current_user.role.value in ['member','elite_member','admin'] %}
+              <a href="/profile">编辑成员资料</a>
+            {% endif %}
+            {% if current_user.role.value in ['elite_member','admin'] %}
+              <a href="/guides/new">发布攻略</a>
+            {% endif %}
+            {% if current_user.role.value == 'admin' %}
+              <a href="/admin">后台管理</a>
+            {% endif %}
+            <a href="#" id="btn-logout">退出登录</a>
+          </div>
+        </div>
+      {% else %}
+        <a href="/login" class="qk-btn qk-btn-primary">登录</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<main class="qk-main">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="qk-footer">
+  <div class="qk-container">
+    <p>© {{ 2025 }} 敲可爱战队 | 炉石传说竞技场玩家聚集地（非官方站点）</p>
+  </div>
+</footer>
+
+<!-- 浏览器端 md5 函数，给登录密码 / 会员码加密用 -->
+<script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.19.0/js/md5.min.js"></script>
+<script src="{{ url_for('static', path='js/main.js') }}"></script>
+{% block body_extra %}{% endblock %}
+
+</body>
+</html>

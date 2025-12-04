@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}竞技场宝典 - 敲可爱战队{% endblock %}
+{% block content %}
+<div class="qk-container">
+  <h1>竞技场宝典</h1>
+  <div class="article-list">
+    {% for a in articles %}
+    <article class="card article-card">
+      <h2><a href="/guides/{{ a.id }}">{{ a.title }}</a></h2>
+      <p class="meta">
+        作者：{{ a.author.nickname if a.author else '未知' }} ·
+        {{ a.created_at.strftime('%Y-%m-%d') }}
+      </p>
+      <p>{{ a.content[:150] }}{% if a.content|length > 150 %}...{% endif %}</p>
+    </article>
+    {% else %}
+    <p>还没有任何攻略，快去写一篇吧！</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

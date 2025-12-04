@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}敲可爱战队 - 主城大厅{% endblock %}
+
+{% block head_extra %}
+<script src="{{ url_for('static', path='js/hero3d.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<section class="qk-hero">
+  <div class="qk-container qk-hero-inner">
+    <div class="qk-hero-left">
+      <h1>敲可爱战队 · 竞技场主城大厅</h1>
+      <p>这里是炉石传说竞技场爱好者的主城，在这里分享构筑、pick 思路、对局细节与历史荣耀。</p>
+      <div class="qk-hero-actions">
+        <a href="/guides" class="qk-btn qk-btn-primary">立即前往竞技场宝典</a>
+        <a href="/join" class="qk-btn qk-btn-outline">加入敲可爱战队</a>
+      </div>
+    </div>
+    <div class="qk-hero-right">
+      <!-- 伪 3D 英雄展示卡片 -->
+      <div class="hero-3d-card" id="hero-3d-card">
+        <div class="hero-3d-inner">
+          <div class="hero-3d-front">
+            <div class="hero-portrait"></div>
+            <div class="hero-name">暗影游侠 · 希尔瓦娜斯</div>
+            <div class="hero-tagline">“凡人啊，你可曾见识过竞技场的真正恐怖？”</div>
+          </div>
+          <div class="hero-3d-back">
+            <h3>敲可爱战队情报</h3>
+            <ul>
+              <li>平均竞技场胜场 7+ 的高质量队员</li>
+              <li>多位国服 / 亚服登顶记录保持者</li>
+              <li>战队内部定期教学、实战复盘</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p class="hero-tip">提示：将鼠标在卡片上轻轻滑动，可以感受 3D 效果 ✨</p>
+    </div>
+  </div>
+</section>
+
+<section class="qk-section">
+  <div class="qk-container">
+    <h2>敲可爱榜单 · 高分大神</h2>
+    <div class="qk-grid members-grid">
+      {% for p in top_members %}
+      <div class="card member-card">
+        <div class="avatar"
+             style="background-image:url('{{ p.avatar_url or '' }}');"></div>
+        <div class="info">
+          <h3>{{ p.user.nickname if p.user else '未知成员' }}</h3>
+          <p class="tags">
+            {{ p.other_tags or '竞技场爱好者' }}
+          </p>
+          <p class="meta">
+            实力：{{ p.strength_score or '保密' }} |
+            平均胜场：{{ '%.1f'|format(p.avg_arena_wins) if p.avg_arena_wins else '-' }}
+          </p>
+        </div>
+      </div>
+      {% else %}
+      <p>暂时还没有成员信息，快去后台添加几位大神吧～</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="qk-section">
+  <div class="qk-container">
+    <h2>荣耀殿堂 · 精选成就</h2>
+    <div class="qk-grid achievements-grid">
+      {% for a in achievements %}
+      <div class="card">
+        <h3>{{ a.title }}</h3>
+        <p class="meta">
+          {{ a.member.nickname if a.member else '未知成员' }} ·
+          {{ a.season_or_version or '未知版本' }} ·
+          {{ a.rank_or_result or '无成绩信息' }}
+        </p>
+        <p class="desc">{{ a.description or '' }}</p>
+      </div>
+      {% else %}
+      <p>暂时没有成就记录。</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="qk-section">
+  <div class="qk-container">
+    <h2>精选攻略 · 竞技场宝典</h2>
+    <div class="qk-grid article-grid">
+      {% for a in featured_articles %}
+      <article class="card article-card">
+        <h3><a href="/guides/{{ a.id }}">{{ a.title }}</a></h3>
+        <p class="meta">
+          作者：{{ a.author.nickname if a.author else '未知' }} ·
+          {{ a.created_at.strftime('%Y-%m-%d') }}
+        </p>
+        <p>{{ a.content[:100] }}{% if a.content|length > 100 %}...{% endif %}</p>
+      </article>
+      {% else %}
+      <p>暂无精选文章，快让大神们写几篇吧～</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

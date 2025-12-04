@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}战队名册 - 敲可爱战队{% endblock %}
+{% block content %}
+<div class="qk-container">
+  <h1>战队名册</h1>
+  <div class="qk-grid members-grid">
+    {% for p in members %}
+    <div class="card member-card">
+      <a href="/members/{{ p.user_id }}">
+        <div class="avatar"
+             style="background-image:url('{{ p.avatar_url or '' }}');"></div>
+        <div class="info">
+          <h3>{{ p.user.nickname if p.user else '未知成员' }}</h3>
+          <p class="meta">
+            年龄：{{ p.age or '-' }} | 性别：{{ p.gender or '-' }}
+          </p>
+          <p class="tags">
+            {{ p.other_tags or '竞技场爱好者' }}
+          </p>
+        </div>
+      </a>
+    </div>
+    {% else %}
+    <p>暂时没有成员。</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

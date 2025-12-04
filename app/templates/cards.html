@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}卡牌评测 - 敲可爱战队{% endblock %}
+{% block content %}
+<div class="qk-container">
+  <h1>卡牌评测</h1>
+  <div class="cards-filter">
+    <label>选择版本：</label>
+    <select id="expansion-select"></select>
+  </div>
+  <div id="cards-grid" class="qk-grid cards-grid"></div>
+</div>
+{% endblock %}

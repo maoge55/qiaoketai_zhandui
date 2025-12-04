@@ -1,0 +1,384 @@
+:root {
+  --primary: #ffb432;
+  --primary-dark: #d38c10;
+  --bg: #050816;
+  --bg-light: #0f172a;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --card-bg: #111827;
+  --border-color: #1f2937;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #1f2937 0, #020617 50%, #000 100%);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.qk-container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.qk-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #1f2937;
+}
+
+.qk-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.qk-logo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.qk-logo-main {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.qk-logo-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.qk-nav a {
+  margin: 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.qk-nav a:hover {
+  color: var(--primary);
+}
+
+.qk-user {
+  display: flex;
+  align-items: center;
+}
+
+.qk-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.qk-btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #111827;
+  font-weight: 600;
+}
+
+.qk-btn-outline {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: transparent;
+}
+
+.qk-main {
+  padding: 24px 0 40px;
+}
+
+.qk-footer {
+  border-top: 1px solid #1f2937;
+  padding: 16px 0;
+  font-size: 12px;
+  color: var(--muted);
+  background: #020617;
+}
+
+.qk-hero {
+  padding: 32px 0 24px;
+}
+
+.qk-hero-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+}
+
+.qk-hero-left {
+  flex: 1 1 320px;
+}
+
+.qk-hero-left h1 {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.qk-hero-left p {
+  color: var(--muted);
+  max-width: 480px;
+}
+
+.qk-hero-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.qk-hero-right {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 伪 3D 英雄卡片 */
+.hero-3d-card {
+  width: 260px;
+  height: 380px;
+  perspective: 900px;
+  cursor: pointer;
+}
+
+.hero-3d-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  background: radial-gradient(circle at top left, #fbbf24 0, #7c2d12 40%, #020617 100%);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  transform-style: preserve-3d;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  position: relative;
+}
+
+.hero-3d-front,
+.hero-3d-back {
+  position: absolute;
+  inset: 0;
+  padding: 16px;
+  border-radius: 18px;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.hero-3d-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(150deg, #0f172a, #020617);
+}
+
+.hero-portrait {
+  position: absolute;
+  inset: 0;
+  background-image: url("https://art.hearthstonejson.com/v1/render/latest/zhCN/512/CS2_101.png");
+  background-size: cover;
+  background-position: center top;
+  opacity: 0.9;
+  filter: saturate(1.2);
+}
+
+.hero-name {
+  position: relative;
+  font-weight: 700;
+  font-size: 18px;
+  text-shadow: 0 0 8px #000;
+}
+
+.hero-tagline {
+  position: relative;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #fef9c3;
+  text-shadow: 0 0 6px #000;
+}
+
+.hero-tip {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* 卡片 & Grid */
+.qk-section {
+  padding: 24px 0;
+}
+
+.qk-section h2 {
+  margin-bottom: 16px;
+}
+
+.qk-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.article-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.members-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.achievements-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.cards-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* 用户下拉 */
+.qk-user-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qk-user-dropdown .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.qk-user-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  background: #020617;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid #1f2937;
+  min-width: 160px;
+  display: none;
+  flex-direction: column;
+}
+
+.qk-user-menu a {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.qk-user-menu a:hover {
+  background: #111827;
+  color: var(--primary);
+}
+
+.qk-user-dropdown:hover .qk-user-menu {
+  display: flex;
+}
+
+/* JS 控制的打开状态（用于点击切换，避免仅依赖 :hover 导致的移动端/闪烁问题） */
+.qk-user-dropdown.open .qk-user-menu {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .qk-header-inner {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 0;
+  }
+  .qk-nav {
+    width: 100%;
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+  .qk-hero-inner {
+    flex-direction: column;
+  }
+}
+.auth-wrapper {
+  min-height: calc(100vh - 140px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.auth-card h1 {
+  margin-bottom: 4px;
+}
+
+.auth-sub {
+  color: var(--muted);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.qk-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.qk-field span {
+  margin-bottom: 4px;
+}
+
+.qk-field input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #020617;
+  color: var(--text);
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.auth-footer {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}

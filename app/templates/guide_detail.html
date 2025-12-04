@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} - 竞技场宝典{% endblock %}
+{% block content %}
+<div class="qk-container guide-detail">
+  <article class="card">
+    <h1>{{ article.title }}</h1>
+    <p class="meta">
+      作者：{{ article.author.nickname if article.author else '未知' }}
+      · {{ article.created_at.strftime('%Y-%m-%d') }}
+    </p>
+    <div class="content">
+      {{ article.content | safe }}
+    </div>
+  </article>
+
+  <section class="card comments-section">
+    <h2>评论区</h2>
+    <div id="comments-list"></div>
+    {% if current_user %}
+    <div class="comment-form">
+      <textarea id="comment-content" placeholder="来一条有营养的评论吧～"></textarea>
+      <button class="qk-btn qk-btn-primary" id="btn-comment-submit"
+              data-article-id="{{ article.id }}">发表评论</button>
+    </div>
+    {% else %}
+    <p>登录后才能评论哦～ <a href="/login">点击登录</a></p>
+    {% endif %}
+  </section>
+</div>
+
+{% block body_extra %}
+<script>
+  window.QK_CURRENT_ARTICLE_ID = {{ article.id }};
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}注册 - 敲可爱战队{% endblock %}
+
+{% block content %}
+<div class="qk-container">
+  <div class="auth-wrapper">
+    <div class="card auth-card">
+      <h1>注册敲可爱战队账号</h1>
+      <p class="auth-sub">
+        普通注册默认为 <strong>普通用户</strong>；<br>
+        如果你获得了战队 <strong>会员码</strong>，可以在下方输入获得对应的成员等级。
+      </p>
+
+      <form id="register-form">
+        <label class="qk-field">
+          <span>用户名</span>
+          <input type="text" name="username" placeholder="用于登录的用户名" required>
+        </label>
+
+        <label class="qk-field">
+          <span>昵称</span>
+          <input type="text" name="nickname" placeholder="展示给其他玩家的昵称" required>
+        </label>
+
+        <label class="qk-field">
+          <span>邮箱</span>
+          <input type="email" name="email" id="email-input" placeholder="用于找回密码 / 接收验证码" required>
+        </label>
+
+        <label class="qk-field">
+          <span>邮箱验证码</span>
+          <div style="display:flex; gap:8px;">
+            <input type="text" name="verification_code" placeholder="输入收到的验证码" required style="flex:1;">
+            <button class="qk-btn qk-btn-outline" id="btn-send-code" type="button" style="white-space:nowrap;">
+              发送验证码
+            </button>
+          </div>
+        </label>
+
+        <label class="qk-field">
+          <span>登录密码</span>
+          <input type="password" name="password" placeholder="设置登录密码" required>
+        </label>
+
+        <label class="qk-field">
+          <span>会员码（可选）</span>
+          <input type="text" name="membership_code" placeholder="如果有战队提供的会员码，在此填写">
+          <small class="hint">
+            - 不填：默认为普通注册用户<br>
+            - 正确会员码：自动升级为对应等级（成员 / 特定成员 / 管理员）
+          </small>
+        </label>
+
+        <button type="submit" class="qk-btn qk-btn-primary auth-submit">注册</button>
+      </form>
+
+      <p class="auth-footer">
+        已有账号？<a href="/login">直接登录</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

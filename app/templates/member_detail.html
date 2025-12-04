@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ user.nickname }} - 战队成员{% endblock %}
+{% block content %}
+<div class="qk-container member-detail">
+  <div class="card member-header">
+    <div class="avatar-big"
+         style="background-image:url('{{ profile.avatar_url or '' }}');"></div>
+    <div class="info-box">
+      <h1>{{ user.nickname }}</h1>
+      <p>账号：{{ user.username }}</p>
+      <p>角色：{{ user.role.value }}</p>
+      <p>年龄：{{ profile.age or '-' }} | 性别：{{ profile.gender or '-' }}</p>
+      <p>实力：{{ profile.strength_score or '保密' }}</p>
+      <p>标签：{{ profile.other_tags or '-' }}</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>个人简介</h2>
+    <p>{{ profile.bio or '这个人很神秘，什么都没有写。' }}</p>
+  </div>
+  <div class="card">
+    <h2>历史成就</h2>
+    {% for a in achievements %}
+    <div class="achievement-item">
+      <h3>{{ a.title }}</h3>
+      <p class="meta">
+        {{ a.season_or_version or '' }} · {{ a.rank_or_result or '' }} ·
+        {{ a.achieved_at.strftime('%Y-%m-%d') if a.achieved_at else '' }}
+      </p>
+      <p>{{ a.description or '' }}</p>
+    </div>
+    {% else %}
+    <p>暂时还没有录入成就。</p>
+    {% endfor %}
+  </div>
+{% endblock %}

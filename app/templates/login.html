@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}登录 - 敲可爱战队{% endblock %}
+
+{% block content %}
+<div class="qk-container">
+  <div class="auth-wrapper">
+    <div class="card auth-card">
+      <h1>登录敲可爱战队</h1>
+      <p class="auth-sub">使用账号或邮箱登录，加入竞技场战局。</p>
+
+      <form id="login-form">
+        <label class="qk-field">
+          <span>用户名 / 邮箱</span>
+          <input type="text" name="username_or_email" placeholder="输入用户名或注册邮箱" required>
+        </label>
+
+        <label class="qk-field">
+          <span>密码</span>
+          <input type="password" name="password" placeholder="输入登录密码" required>
+        </label>
+
+        <button type="submit" class="qk-btn qk-btn-primary auth-submit">登录</button>
+      </form>
+
+      <p class="auth-footer">
+        还没有账号？<a href="/register">立即注册</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
