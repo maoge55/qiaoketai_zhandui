@@ -16,8 +16,10 @@ from app.utils.security import get_password_hash, verify_password, create_access
 from app.utils.email import send_email_qq
 from app.config import settings
 import random,hashlib 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+ONE_YEAR_SECONDS = 60 * 60 * 24 * 365  # 新增：1 年的秒数
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/send_verification_code")
 def send_verification_code(
@@ -170,26 +172,32 @@ def login(
     # 按需求：保存 JWT 到前端，并刷新用户信息到 cookie
     # 这里后端设置一个可被 JS 访问的 cookie（非 HttpOnly）
     # access token cookie: use seconds for max_age
-    access_token_max_age = int(timedelta(minutes=15).total_seconds())
+    access_token_max_age = ONE_YEAR_SECONDS
     response.set_cookie(
-        "access_token", str(token), max_age=access_token_max_age, httponly=True
+        "access_token",
+        str(token),
+        max_age=access_token_max_age,
+        httponly=True,
+        path="/",
     )
     response.set_cookie(
         key="user_role",
         value=user.role.value,
         httponly=False,
-        max_age=60 * 60 * 24,
+        max_age=access_token_max_age,
         path="/",
     )
+
     # Percent-encode nickname so non-ASCII characters don't break cookie encoding
     nickname_for_cookie = quote(user.nickname or "")
     response.set_cookie(
         key="user_nickname",
         value=nickname_for_cookie,
         httponly=False,
-        max_age=60 * 60 * 24,
+        max_age=access_token_max_age,
         path="/",
     )
+
 
     return Token(access_token=token)
 

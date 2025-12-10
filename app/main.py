@@ -12,6 +12,7 @@ from app.routers import (
     achievements as achievements_router,
     admin as admin_router,
     homepage as homepage_router,
+    card_reviews as card_reviews_router,
     pages as pages_router,
 )
 
@@ -31,6 +32,6 @@ app.include_router(members_router.router)
 app.include_router(achievements_router.router)
 app.include_router(admin_router.router)
 app.include_router(homepage_router.router)
-
+app.include_router(card_reviews_router.router)
 # 页面路由
 app.include_router(pages_router.router)

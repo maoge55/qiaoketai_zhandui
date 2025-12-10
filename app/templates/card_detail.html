@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}卡牌详情 - 敲可爱战队{% endblock %}
+
+{% block content %}
+<div class="qk-container card-detail-page">
+  <section class="card-detail-header">
+    <h1>卡牌详情</h1>
+  </section>
+
+  <section class="card-detail-body">
+    <div class="card-detail-left">
+      <div class="card-image-wrapper big">
+        <img
+          src="{{ card.pic or 'https://via.placeholder.com/256x384?text=No+Image' }}"
+          alt="{{ card.name }}"
+          class="card-image"
+          onerror="this.onerror=null;this.src='https://via.placeholder.com/256x384?text=No+Image';"
+        />
+      </div>
+      <div class="card-basic-info">
+        <h2 class="card-name">{{ card.name }}</h2>
+        <p class="meta">
+          {{ card.card_class }} · {{ card.rarity }} · 法力值：{{ card.mana_cost }}
+        </p>
+        <p class="score">
+          竞技场评分：
+          {% if card.arena_score is not none %}
+            {{ card.arena_score }}
+          {% else %}
+            ？
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="card-detail-right">
+      <div class="card-section">
+        <h3>卡牌描述</h3>
+        <p class="description">
+          {% if card.description %}
+            {{ card.description | safe }}
+          {% else %}
+            暂无描述
+          {% endif %}
+        </p>
+      </div>
+
+
+      <div class="card-section">
+        <h3>一句话短评</h3>
+        <p>
+          {{ card.short_review or '暂无短评' }}
+        </p>
+        {% if card.reviewer_nickname %}
+        <p class="reviewer">点评人：{{ card.reviewer_nickname }}</p>
+        {% endif %}
+      </div>
+
+      {# 这里预留一个“职业胜率”区域，后面可以接 arena_win_rates 的可视化 #}
+      {# <div class="card-section">
+        <h3>各职业竞技场胜率</h3>
+        ...
+      </div> #}
+    </div>
+  </section>
+</div>
+{% endblock %}

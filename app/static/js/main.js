@@ -1,13 +1,21 @@
 // 简单封装：获取 JWT
+const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 function getToken() {
   return localStorage.getItem("qk_token") || getCookie("access_token") || "";
 }
 
 function setToken(token, role, nickname) {
+  // 本地存储：浏览器不删就一直在
   localStorage.setItem("qk_token", token);
-  document.cookie = `access_token=${token};path=/`;
-  if (role) document.cookie = `user_role=${role};path=/`;
-  if (nickname) document.cookie = `user_nickname=${nickname};path=/`;
+
+  // 显式设定 cookie 有效期为 1 年
+  document.cookie = `access_token=${token};path=/;max-age=${ONE_YEAR_SECONDS}`;
+  if (role) {
+    document.cookie = `user_role=${role};path=/;max-age=${ONE_YEAR_SECONDS}`;
+  }
+  if (nickname) {
+    document.cookie = `user_nickname=${nickname};path=/;max-age=${ONE_YEAR_SECONDS}`;
+  }
 }
 
 function clearAuth() {
@@ -244,51 +252,391 @@ document.addEventListener("click", async (e) => {
 });
 
 // 卡牌页面逻辑
+// 卡牌评测页面逻辑
 async function initCardsPage() {
-  const sel = document.getElementById("expansion-select");
-  const grid = document.getElementById("cards-grid");
-  if (!sel || !grid) return;
+  const expansionSelect = document.getElementById("expansion-select");
+  const cardsGrid = document.getElementById("cards-grid");
+  if (!expansionSelect || !cardsGrid) return;
 
-  const expRes = await fetch("/api/cards/expansions");
-  const exps = await expRes.json();
-  sel.innerHTML = exps
-    .map((e) => `<option value="${e}">${e}</option>`)
-    .join("");
+  const classSelect = document.getElementById("class-filter");
+  const raritySelect = document.getElementById("rarity-filter");
+  const searchInput = document.getElementById("card-search");
+  const loadMoreBtn = document.getElementById("cards-load-more");
 
-  async function loadCards() {
-    const expansion = sel.value;
-    const res = await fetch(
-      `/api/cards?expansion=${encodeURIComponent(expansion)}&page=1&page_size=50`
-    );
-    const cards = await res.json();
-    grid.innerHTML = cards
-      .map(
-        (c) => `
-        <div class="card card-small">
-          <div class="card-header">
-            <span class="mana">${c.mana_cost}</span>
-            <h3>${c.name}</h3>
-          </div>
-          <p class="meta">${c.card_class} · ${c.rarity}</p>
-          <p class="score">竞技场评分：${c.arena_score || "?"}</p>
-          <p class="review">${c.short_review || ""}</p>
+  let page = 1;
+  const pageSize = 40;
+  let loading = false;
+  let hasMore = true;
+
+  // ---------- 工具函数 ----------
+
+  function getFilters() {
+    return {
+      expansion: expansionSelect.value || "",
+      cardClass: classSelect ? classSelect.value : "",
+      rarity: raritySelect ? raritySelect.value : "",
+      search: searchInput ? searchInput.value.trim() : "",
+    };
+  }
+
+  function buildCardHtml(card, selectedClass) {
+    // 评分
+    let scoreText = "？";
+    let scoreClass = "score-neutral";
+
+    if (card.arena_score !== null && card.arena_score !== undefined) {
+      const n = Number(card.arena_score);
+      if (!Number.isNaN(n)) {
+        scoreText = n.toFixed(1);
+
+        if (n >= 4.5) {
+          // 顶级卡
+          scoreClass = "score-epic";
+        } else if (n >= 3) {
+          // 还不错
+          scoreClass = "score-good";
+        } else {
+          // 较差
+          scoreClass = "score-bad";
+        }
+      }
+    }
+
+    // 胜率
+    let winrateText = "暂无胜率数据";
+    let winData = card.arena_win_rates || null;
+
+    if (typeof winData === "string") {
+      try {
+        winData = JSON.parse(winData);
+      } catch (e) {
+        winData = null;
+      }
+    }
+
+    if (winData && typeof winData === "object") {
+      const values = [];
+
+      // 如果有选职业，优先显示该职业胜率
+      if (selectedClass && winData[selectedClass] != null) {
+        const v = Number(winData[selectedClass]);
+        if (!Number.isNaN(v)) {
+          winrateText = `${selectedClass} 胜率：${v.toFixed(1)}%`;
+        }
+      } else {
+        // 否则展示平均胜率
+        Object.values(winData).forEach((v) => {
+          const n = Number(v);
+          if (!Number.isNaN(n)) values.push(n);
+        });
+        if (values.length) {
+          const avg =
+            values.reduce((sum, v) => sum + v, 0) / values.length;
+          winrateText = `平均胜率：${avg.toFixed(1)}%`;
+        }
+      }
+    }
+
+    // 短评（列表页只展示一部分）
+    const fullReview = (card.short_review || "").trim();
+    let shortReview = fullReview;
+
+    const MAX_REVIEW_LEN = 40;
+    if (shortReview.length > MAX_REVIEW_LEN) {
+      shortReview = shortReview.slice(0, MAX_REVIEW_LEN) + "…";
+    }
+    if (!shortReview) {
+      shortReview = `<span class="card-review-empty">暂无短评</span>`;
+    }
+
+    // 点评人
+    const reviewerName =
+      card.reviewer_name || card.reviewer || null;
+    const reviewerText = reviewerName
+      ? `点评人：${reviewerName}`
+      : "点评人：暂时无人点评";
+
+    const cardClass = card.card_class || "中立";
+    const rarity = card.rarity || "";
+
+    // 注意：这里刻意不再显示卡牌名称（例如“静电震击”）
+    return `
+      <div class="card card-small card-eval" data-card-id="${card.id}">
+        <div class="card-image-wrap">
+          <img
+            src="${card.pic || "/static/images/card-placeholder.png"}"
+            alt="${card.name || ""}"
+            class="card-art"
+            loading="lazy"
+          />
         </div>
-      `
-      )
-      .join("");
+        <div class="card-body">
+          <p class="card-meta">${cardClass} · ${rarity}</p>
+          <p class="card-score ${scoreClass}">竞技场评分：${scoreText}</p>
+          <p class="card-winrate">${winrateText}</p>
+          <p class="card-review">${shortReview}</p>
+          <p class="card-reviewer">${reviewerText}</p>
+        </div>
+      </div>
+    `;
   }
 
-  sel.addEventListener("change", loadCards);
-  if (exps.length) {
-    sel.value = exps[0];
-    loadCards();
+  async function loadExpansions() {
+    try {
+      const res = await fetch("/api/cards/expansions");
+      if (!res.ok) return;
+      const expansions = await res.json();
+
+      expansionSelect.innerHTML = "";
+
+      // 按“(年份)”倒序排序
+      expansions.sort((a, b) => {
+        const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+        const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+        return yearB - yearA;
+      });
+
+      for (const exp of expansions) {
+        const option = document.createElement("option");
+        option.value = exp;
+        option.textContent = exp;
+        expansionSelect.appendChild(option);
+      }
+    } catch (err) {
+      console.error("加载版本列表失败", err);
+    }
   }
+
+  async function loadCards(reset = false) {
+    if (loading) return;
+    if (!hasMore && !reset) return;
+
+    loading = true;
+
+    if (reset) {
+      page = 1;
+      hasMore = true;
+      cardsGrid.innerHTML = "";
+    }
+
+    const { expansion, cardClass, rarity, search } = getFilters();
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+    params.append("page_size", String(pageSize));
+    if (expansion) params.append("version", expansion);
+    if (cardClass) params.append("card_class", cardClass);
+    if (rarity) params.append("rarity", rarity);
+    if (search) params.append("search", search);
+
+    try {
+      const res = await fetch(`/api/cards?${params.toString()}`);
+      if (!res.ok) throw new Error("加载卡牌失败");
+      const cards = await res.json();
+
+      const selectedClass = classSelect ? classSelect.value : "";
+      if (cards.length === 0 && page === 1) {
+        cardsGrid.innerHTML =
+          `<p class="cards-empty">当前筛选条件下没有卡牌。</p>`;
+        hasMore = false;
+      } else {
+        const html = cards
+          .map((card) => buildCardHtml(card, selectedClass))
+          .join("");
+        cardsGrid.insertAdjacentHTML("beforeend", html);
+        if (cards.length < pageSize) {
+          hasMore = false;
+        } else {
+          page += 1;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      loading = false;
+      if (loadMoreBtn) {
+        loadMoreBtn.style.display = hasMore ? "inline-flex" : "none";
+      }
+    }
+  }
+
+  // ---------- 事件监听 ----------
+
+  await loadExpansions();
+  await loadCards(true);
+
+  expansionSelect.addEventListener("change", () => loadCards(true));
+  if (classSelect) {
+    classSelect.addEventListener("change", () => loadCards(true));
+  }
+  if (raritySelect) {
+    raritySelect.addEventListener("change", () => loadCards(true));
+  }
+  if (searchInput) {
+    let timer = null;
+    searchInput.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => loadCards(true), 300);
+    });
+  }
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => loadCards(false));
+  }
+
+  // 点击卡牌跳详情
+  cardsGrid.addEventListener("click", (e) => {
+    const cardEl = e.target.closest(".card-eval");
+    if (!cardEl) return;
+    const id = cardEl.dataset.cardId;
+    if (id) {
+      window.location.href = `/cards/${id}`;
+    }
+  });
+}
+
+async function initCardDetailPage() {
+  const root = document.querySelector(".card-detail-page");
+  if (!root) return;
+
+  const cardId = root.dataset.cardId;
+  const reviewList = document.getElementById("card-review-list");
+  const btnMore = document.getElementById("btn-review-load-more");
+  const selSort = document.getElementById("review-sort");
+  const chkHighScore = document.getElementById("filter-high-score");
+  const chkLatestVersion = document.getElementById("filter-latest-version");
+
+  let page = 1;
+  const pageSize = 10;
+  let total = 0;
+  let loading = false;
+
+  function renderReviewItem(r) {
+    const date = new Date(r.created_at);
+    const timeStr = date.toLocaleString("zh-CN");
+
+    const score = r.score ?? 0;
+    let scoreClass = "score-mid";
+    if (score < 4) scoreClass = "score-low";
+    else if (score > 7) scoreClass = "score-high";
+
+    const expertBadge = r.reviewer.is_expert
+      ? `<span class="badge badge-expert">专家</span>`
+      : "";
+
+    const version = r.game_version ? ` · 版本 ${r.game_version}` : "";
+
+    return `
+      <article class="card-review-item">
+        <header class="review-header">
+          <div class="reviewer-info">
+            <div class="avatar-placeholder">${r.reviewer.name[0] || "玩"}</div>
+            <div>
+              <div class="reviewer-name">
+                ${r.reviewer.name}
+                ${expertBadge}
+              </div>
+              <div class="review-meta">${timeStr}${version}</div>
+            </div>
+          </div>
+          <div class="review-score ${scoreClass}">
+            <span class="score-number">${score}</span>
+            <span class="score-unit">分</span>
+          </div>
+        </header>
+        <div class="review-body">
+          <p class="review-content collapsed">${r.content}</p>
+          <button class="review-toggle" type="button">展开</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function updateAvgScore(avg) {
+    const scoreWrap = document.querySelector(".card-avg-score");
+    if (!scoreWrap) return;
+    const span = scoreWrap.querySelector(".score-number");
+    const v = avg == null ? "—" : avg.toFixed(1);
+    span.textContent = v;
+
+    scoreWrap.classList.remove("score-low", "score-mid", "score-high");
+    let cls = "score-mid";
+    if (avg != null) {
+      if (avg < 4) cls = "score-low";
+      else if (avg > 7) cls = "score-high";
+    }
+    scoreWrap.classList.add(cls);
+  }
+
+  async function loadReviews(reset = false) {
+    if (loading) return;
+    loading = true;
+
+    if (reset) {
+      page = 1;
+      reviewList.innerHTML = "";
+    }
+
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("page_size", String(pageSize));
+    params.set("sort", selSort.value || "time_desc");
+    if (chkHighScore.checked) params.set("min_score", "7");
+    if (chkLatestVersion.checked) params.set("latest_version_only", "true");
+
+    const res = await fetch(`/api/v1/cards/${cardId}/reviews?` + params.toString());
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || "加载点评失败");
+      loading = false;
+      return;
+    }
+
+    updateAvgScore(data.card_info.average_score);
+
+    data.reviews.forEach((r) => {
+      reviewList.insertAdjacentHTML("beforeend", renderReviewItem(r));
+    });
+
+    total = data.pagination.total;
+    const loadedCount = reviewList.querySelectorAll(".card-review-item").length;
+
+    if (loadedCount >= total || total === 0) {
+      btnMore.style.display = "none";
+    } else {
+      btnMore.style.display = "inline-flex";
+    }
+
+    page += 1;
+    loading = false;
+  }
+
+  // 事件绑定
+  btnMore.addEventListener("click", () => {
+    loadReviews(false);
+  });
+
+  selSort.addEventListener("change", () => loadReviews(true));
+  chkHighScore.addEventListener("change", () => loadReviews(true));
+  chkLatestVersion.addEventListener("change", () => loadReviews(true));
+
+  // 展开 / 收起 长评
+  reviewList.addEventListener("click", (e) => {
+    const btn = e.target.closest(".review-toggle");
+    if (!btn) return;
+    const item = btn.closest(".card-review-item");
+    const p = item.querySelector(".review-content");
+    p.classList.toggle("collapsed");
+    btn.textContent = p.classList.contains("collapsed") ? "展开" : "收起";
+  });
+
+  // 首次加载
+  await loadReviews(true);
 }
 
 // 简单全局初始化
 document.addEventListener("DOMContentLoaded", () => {
   loadComments();
   initCardsPage();
+  initCardDetailPage && initCardDetailPage();
 
   // 解码并显示昵称（后端对 nickname 做了 percent-encode）
   const rawNick = getCookie("user_nickname");

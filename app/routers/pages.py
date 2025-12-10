@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request,HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, get_current_user_from_cookie
-from app.models import Article, ArticleStatus, UserProfile, Achievement, UserRole
+from app.models import Article, ArticleStatus, UserProfile, Achievement, UserRole,Card
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -127,6 +127,26 @@ async def cards_page(
         {"request": request, "current_user": current_user},
     )
 
+@router.get("/cards/{card_id}", response_class=HTMLResponse)
+async def card_detail_page(
+    card_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_from_cookie),
+):
+    card = db.query(Card).filter(Card.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="卡牌不存在")
+
+    return templates.TemplateResponse(
+        "card_detail.html",
+        {
+            "request": request,
+            "card": card,
+            "current_user": current_user,  # 跟其他页面保持一致
+            "user": current_user,          # 可要可不要，看模板里用哪个
+        },
+    )
 
 @router.get("/legends", response_class=HTMLResponse)
 async def legends_page(

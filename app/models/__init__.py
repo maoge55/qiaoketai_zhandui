@@ -122,11 +122,27 @@ class Comment(Base):
     user = relationship("User", back_populates="comments")
     parent = relationship("Comment", remote_side=[id], backref="replies")
 
+class CardReview(Base):
+    __tablename__ = "card_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    card_id = Column(Integer, ForeignKey("cards.id", ondelete="CASCADE"), index=True, nullable=False)
+    reviewer_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+
+    score = Column(Float, nullable=False)           # 1-10 或 0-100 都可以
+    content = Column(Text, nullable=False)
+    game_version = Column(String(32), nullable=True)  # 例如 "29.2"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    card = relationship("Card", back_populates="reviews")
+    reviewer = relationship("User")
+
 
 class Card(Base):
     __tablename__ = "cards"
 
     id = Column(Integer, primary_key=True, index=True)
+    card_id = Column(Integer, nullable=True, unique=True, index=True)
     name = Column(String(255), nullable=False)
     expansion = Column(String(100), nullable=False, index=True)
     mana_cost = Column(Integer, nullable=False)
@@ -136,8 +152,16 @@ class Card(Base):
     pic = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     arena_score = Column(Integer, nullable=True)
+    arena_win_rates = Column(JSON, default=list)
     short_review = Column(String(255), nullable=True)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewer = relationship("User")  # 如果你已经有就不要重复写
+    reviews = relationship(
+        "CardReview",
+        back_populates="card",
+        cascade="all, delete-orphan",
+    )
+
 
 
 class Achievement(Base):

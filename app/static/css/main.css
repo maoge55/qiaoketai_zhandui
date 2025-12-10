@@ -192,7 +192,7 @@ a {
 .hero-portrait {
   position: absolute;
   inset: 0;
-  background-image: url("https://art.hearthstonejson.com/v1/render/latest/zhCN/512/CS2_101.png");
+  background-image: url("../image/Sylv.png");
   background-size: cover;
   background-position: center top;
   opacity: 0.9;
@@ -258,12 +258,269 @@ a {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
+/* 卡牌详情布局 */
+.card-detail-page {
+  padding-top: 32px;
+  padding-bottom: 48px;
+}
+
+.card-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.card-detail-info {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 卡牌图 hover 放大 */
+.card-art-wrapper {
+  border-radius: 20px;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #1d4ed8, #020617);
+  padding: 8px;
+}
+
+.card-art {
+  width: 100%;
+  display: block;
+  border-radius: 16px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.8);
+}
+
+.card-art-wrapper:hover .card-art {
+  transform: scale(1.05);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.9);
+}
+
+.card-meta-panel .card-name {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.card-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  font-size: 0.75rem;
+}
+
+.badge-rare {
+  background: linear-gradient(135deg, #4f46e5, #a855f7);
+}
+
+.badge-expert {
+  background: linear-gradient(135deg, #f97316, #facc15);
+  color: #020617;
+  margin-left: 4px;
+}
+
+/* 综合评分块 */
+.card-score-block {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.8);
+}
+
+.card-score-block .score-label {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.card-avg-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.card-avg-score .score-number {
+  font-size: 1.6rem;
+}
+
+.card-avg-score .score-unit {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+/* 评分颜色状态 */
+.card-avg-score.score-low,
+.review-score.score-low {
+  color: #f97373;
+}
+
+.card-avg-score.score-mid,
+.review-score.score-mid {
+  color: #facc15;
+}
+
+.card-avg-score.score-high,
+.review-score.score-high {
+  color: #4ade80;
+}
+
+/* 点评列表区 */
+.card-detail-reviews {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.reviews-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reviews-filters select {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #020617;
+  color: #e5e7eb;
+}
+
+.filter-item {
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-review-item {
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.reviewer-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: radial-gradient(circle at top, #ecfeff, #0ea5e9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #0f172a;
+}
+
+.reviewer-name {
+  font-size: 0.9rem;
+}
+
+.review-meta {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.review-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.review-score .score-number {
+  font-size: 1.2rem;
+}
+
+.review-body {
+  margin-top: 4px;
+}
+
+.review-content {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  position: relative;
+}
+
+/* 超过 3 行时使用 collapsed + 展开按钮 */
+.review-content.collapsed {
+  max-height: 4.5em;
+  overflow: hidden;
+}
+
+.review-toggle {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: transparent;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.reviews-footer {
+  margin-top: 12px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .card-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* 用户下拉 */
 .qk-user-dropdown {
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
+  padding-bottom: 6px;
 }
 
 .qk-user-dropdown .avatar {
@@ -281,7 +538,7 @@ a {
 .qk-user-menu {
   position: absolute;
   right: 0;
-  top: calc(100% + 6px);
+  top: 100%;
   z-index: 60;
   background: #020617;
   border-radius: 12px;
@@ -308,7 +565,7 @@ a {
   display: flex;
 }
 
-/* JS 控制的打开状态（用于点击切换，避免仅依赖 :hover 导致的移动端/闪烁问题） */
+/* JS 控制的打开状态 */
 .qk-user-dropdown.open .qk-user-menu {
   display: flex;
 }
@@ -331,6 +588,7 @@ a {
     flex-direction: column;
   }
 }
+
 .auth-wrapper {
   min-height: calc(100vh - 140px);
   display: flex;
@@ -381,4 +639,361 @@ a {
   margin-top: 12px;
   font-size: 13px;
   color: var(--muted);
+}
+
+/* 卡牌评测页 - 头部工具栏（老的基础样式） */
+.cards-header h1 {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.cards-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.card-search-input {
+  flex: 0 0 220px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+}
+
+/* 卡牌网格里使用图片展示，不再显示大水晶 */
+.card-small .mana {
+  display: none;
+}
+
+.card-image-wrapper {
+  border-radius: 18px;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #1d4ed8, #020617);
+  margin-bottom: 8px;
+}
+
+.card-image {
+  width: 100%;
+  display: block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-image-wrapper:hover .card-image {
+  transform: scale(1.04);
+}
+
+.card-body .card-title {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.cards-loading {
+  text-align: center;
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+/* 版本选择下拉 - 外层 */
+.select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* 关闭状态的下拉框样式 */
+.select-wrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 6px 32px 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(30, 64, 175, 0.85)
+  );
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 展开后的每一项样式 */
+.select-wrapper select option {
+  background-color: #020617;
+  color: #e5e7eb;
+}
+
+/* 选中 / hover 的那一项 */
+.select-wrapper select option:checked,
+.select-wrapper select option:hover,
+.select-wrapper select option:focus {
+  background-color: #1e293b;
+  color: #f9fafb;
+}
+
+/* 自定义小箭头 */
+.select-wrapper::after {
+  content: "▾";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #cbd5f5;
+  pointer-events: none;
+  z-index: 2; /* 确保箭头在上层 */
+}
+
+/* 悬浮时边框/光晕效果 */
+.select-wrapper select:hover {
+  border-color: rgba(129, 140, 248, 0.95);
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.5);
+}
+
+/* 卡片正文区域 */
+.card-body .meta {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.card-body .score {
+  font-size: 0.85rem;
+  color: #e5e7eb;
+  margin-bottom: 2px;
+}
+
+/* 点评人 */
+.card-body .reviewer {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+/* 评语：只显示两行，多余省略号 */
+.card-body .review.clamp-2 {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: calc(1.4em * 2);
+}
+
+/* 详情页布局补充 */
+.card-detail-header h1 {
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.card-detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr);
+  gap: 32px;
+}
+
+.card-detail-left .card-image-wrapper.big {
+  border-radius: 24px;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #1d4ed8, #020617);
+  margin-bottom: 16px;
+}
+
+.card-detail-left .card-image {
+  width: 100%;
+  max-width: 320px;
+  display: block;
+  margin: 0 auto;
+}
+
+.card-basic-info .card-name {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.card-basic-info .meta,
+.card-basic-info .score,
+.card-detail-right .reviewer {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.card-detail-right .card-section {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 24px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.6);
+}
+
+.card-detail-right .card-section h3 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+/* ---- 新版卡牌评测工具栏 ---- */
+.cards-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.cards-toolbar-left,
+.cards-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cards-label {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+}
+
+.cards-select {
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: #e5e7eb;
+  padding: 0.4rem 0.9rem;
+  padding-right: 2.2rem; /* 预留空间给箭头 */
+  border-radius: 999px;
+  font-size: 0.9rem;
+  outline: none;
+  appearance: none;
+}
+
+.cards-select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
+}
+
+.cards-search-input {
+  min-width: 220px;
+  background: #020617;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 0.45rem 1rem;
+  color: #e5e7eb;
+  font-size: 0.9rem;
+}
+
+.cards-search-input::placeholder {
+  color: #6b7280;
+}
+
+.cards-search-input:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
+}
+
+/* ---- 卡牌卡片 ---- */
+.cards-grid .card.card-eval {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at top, #111827, #020617);
+}
+
+.card-image-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 1rem 0.5rem;
+}
+
+.card-art {
+  width: 100%;
+  height: auto;
+  max-width: 260px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 25px rgba(0, 0, 0, 0.8));
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.card.card-eval:hover .card-art {
+  transform: translateY(-4px) scale(1.02);
+  filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.9));
+}
+
+.cards-grid .card.card-eval .card-body {
+  padding: 0.75rem 1.1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.card-meta {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+/* 评分颜色：紫色 > 绿色 > 红色 */
+.card-score {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.card-score.score-epic {
+  color: #e879f9;
+}
+
+.card-score.score-good {
+  color: #4ade80;
+}
+
+.card-score.score-bad {
+  color: #f97373;
+}
+
+.card-score.score-neutral {
+  color: #e5e7eb;
+}
+
+/* 胜率：偏蓝一点 */
+.card-winrate {
+  font-size: 0.9rem;
+  color: #38bdf8;
+}
+
+/* 短评：偏橙黄 */
+.card-review {
+  font-size: 0.9rem;
+  color: #fbbf24;
+}
+
+.card-review-empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* 点评人：淡一点的灰 */
+.card-reviewer {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.cards-more-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.cards-empty {
+  color: #9ca3af;
+  text-align: center;
+  padding: 2rem 0;
 }

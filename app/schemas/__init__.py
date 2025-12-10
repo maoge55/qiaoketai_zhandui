@@ -161,9 +161,52 @@ class CardOut(BaseModel):
     description: Optional[str]
     arena_score: Optional[int]
     short_review: Optional[str]
+    reviewer_nickname: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+# 现有的 CardOut 下面追加
+
+class CardReviewCardInfo(BaseModel):
+    """卡牌信息（用于卡牌详情 + 点评页头部）"""
+    id: int
+    name: str
+    image_url: Optional[str] = None
+    average_score: Optional[float] = None
+    card_class: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class CardReviewReviewer(BaseModel):
+    id: int
+    name: str
+    is_expert: bool = False
+
+
+class CardReviewItem(BaseModel):
+    review_id: int
+    reviewer: CardReviewReviewer
+    score: float
+    content: str
+    created_at: datetime
+    game_version: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class Pagination(BaseModel):
+    page: int
+    total: int
+
+
+class CardReviewsResponse(BaseModel):
+    card_info: CardReviewCardInfo
+    reviews: List[CardReviewItem]
+    pagination: Pagination
+
 
 
 # 成就

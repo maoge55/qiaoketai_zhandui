@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str = "change_me"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 天
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365  # 1 年
 
     EMAIL_SENDER: str
     EMAIL_PASSWORD: str

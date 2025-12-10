@@ -2,11 +2,63 @@
 {% block title %}卡牌评测 - 敲可爱战队{% endblock %}
 {% block content %}
 <div class="qk-container">
-  <h1>卡牌评测</h1>
-  <div class="cards-filter">
-    <label>选择版本：</label>
-    <select id="expansion-select"></select>
+  <h1 class="page-title">卡牌评测</h1>
+
+  <div class="cards-toolbar">
+    <div class="cards-toolbar-left">
+      <label class="cards-label">选择版本：</label>
+      <div class="select-wrapper">
+        <select id="expansion-select" class="cards-select"></select>
+      </div>
+
+      <label class="cards-label">职业：</label>
+      <div class="select-wrapper">
+        <select id="class-filter" class="cards-select">
+          <option value="">全部职业</option>
+          <option value="德鲁伊">德鲁伊</option>
+          <option value="猎人">猎人</option>
+          <option value="法师">法师</option>
+          <option value="圣骑士">圣骑士</option>
+          <option value="牧师">牧师</option>
+          <option value="潜行者">潜行者</option>
+          <option value="萨满">萨满</option>
+          <option value="术士">术士</option>
+          <option value="战士">战士</option>
+          <option value="死亡骑士">死亡骑士</option>
+          <option value="恶魔猎手">恶魔猎手</option>
+          <option value="中立">中立</option>
+        </select>
+      </div>
+
+      <label class="cards-label">稀有度：</label>
+      <div class="select-wrapper">
+        <select id="rarity-filter" class="cards-select">
+          <option value="">全部稀有度</option>
+          <option value="免费">免费</option>
+          <option value="普通">普通</option>
+          <option value="稀有">稀有</option>
+          <option value="史诗">史诗</option>
+          <option value="传说">传说</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cards-toolbar-right">
+      <input
+        id="card-search"
+        type="text"
+        class="cards-search-input"
+        placeholder="搜索卡牌名称..."
+      />
+    </div>
   </div>
+
   <div id="cards-grid" class="qk-grid cards-grid"></div>
+
+  <div class="cards-more-wrapper">
+    <button id="cards-load-more" class="btn-secondary" style="display:none;">
+      加载更多
+    </button>
+  </div>
 </div>
 {% endblock %}
