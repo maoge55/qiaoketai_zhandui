@@ -62,6 +62,7 @@ class UserProfileBase(BaseModel):
 
 class UserProfileOut(UserProfileBase):
     user_id: int
+    user: Optional[UserBase] = None
 
 
 class UserProfileUpdate(UserProfileBase):

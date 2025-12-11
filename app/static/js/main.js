@@ -216,29 +216,40 @@ function buildMemberCard(profile) {
   card.className = "card member-card member-card-animated";
 
   card.innerHTML = `
-    <a href="/members/${profile.user_id}">
-      <div class="member-card-inner">
-        <div class="member-card-avatar"
-             style="${avatarUrl ? `background-image:url('${avatarUrl}')` : ""}">
+    <a href="/members/${profile.user_id}" class="member-card-link">
+      <!-- 左侧：方形头像卡片 -->
+      <div class="member-card-avatar"
+           style="${avatarUrl ? `background-image:url('${avatarUrl}')` : ""}">
+      </div>
+
+      <!-- 中间：基本信息 -->
+      <div class="member-card-info">
+        <div class="member-card-top">
+          <h3 class="member-card-name">${nickname}</h3>
+          ${
+            rank
+              ? `<span class="member-card-rank">当前赛季第 ${rank} 名</span>`
+              : ""
+          }
         </div>
-        <div class="member-card-info">
-          <div class="member-card-header">
-            <h3>${nickname}</h3>
-            <span class="member-card-badge">影响力 ${influence}</span>
-          </div>
-          <p class="member-card-meta">
-            年龄：${age} ｜ 性别：${gender}${
-              rank ? ` ｜ 当前赛季排名：${rank}` : ""
-            }
-          </p>
-          <p class="member-card-tags">${tags}</p>
-        </div>
+        <p class="member-card-meta">
+          年龄：${age} ｜ 性别：${gender}
+        </p>
+        <p class="member-card-tags">${tags}</p>
+      </div>
+
+      <!-- 右侧：影响力等信息 -->
+      <div class="member-card-right">
+        <span class="member-card-influence">
+          影响力 ${influence}
+        </span>
       </div>
     </a>
   `;
 
   return card;
 }
+
 
 async function loadMembersPage() {
   const grid = document.getElementById("members-grid");

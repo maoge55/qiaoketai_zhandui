@@ -1132,3 +1132,141 @@ a {
   font-size: 0.9rem;
   color: var(--muted);
 }
+
+/* ===== 战队名册 · 成员名片样式 ===== */
+
+.members-subtitle {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* 每行一张名片，让它足够宽气派 */
+.members-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* 外层名片卡片：更亮一点的渐变背景，和页面背景区分开 */
+.member-card {
+  max-width: 980px;
+  margin: 0 auto 20px;
+  padding: 18px 24px;
+  border-radius: 26px;
+  background: linear-gradient(
+      120deg,
+      rgba(248, 250, 252, 0.12),
+      rgba(56, 189, 248, 0.18),
+      rgba(15, 23, 42, 0.96)
+  );
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  box-shadow: 0 26px 52px rgba(15, 23, 42, 0.9);
+  overflow: hidden;
+}
+
+/* 循环特效动画：轻微上浮 + 光晕呼吸 */
+@keyframes member-card-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(251, 191, 36, 0.35);
+    transform: translateY(-4px);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+    transform: translateY(0);
+  }
+}
+
+.member-card-animated {
+  animation: member-card-glow 8s ease-in-out infinite;
+}
+
+.member-card-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* 左侧：方形头像卡片，完整展示图片 */
+.member-card-avatar {
+  width: 116px;
+  height: 116px;
+  border-radius: 18px;
+  background-size: cover;
+  background-position: center;
+  background-color: #020617;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.95);
+  flex-shrink: 0;
+}
+
+/* 中间：成员信息块 */
+.member-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.member-card-name {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.member-card-rank {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.7);
+  color: #bfdbfe;
+  white-space: nowrap;
+}
+
+.member-card-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* 标签颜色换成更亮的蓝白色 */
+.member-card-tags {
+  margin: 0;
+  margin-top: 4px;
+  font-size: 0.88rem;
+  color: #e0f2fe;
+}
+
+/* 右侧：影响力徽章区域 */
+.member-card-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+}
+
+.member-card-influence {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  background: rgba(250, 204, 21, 0.2);
+  border: 1px solid rgba(250, 204, 21, 0.85);
+  color: #facc15;
+}
+
+/* hover 时轻微上浮，配合光晕更有“金边卡牌”感觉 */
+.member-card:hover {
+  transform: translateY(-2px);
+}
