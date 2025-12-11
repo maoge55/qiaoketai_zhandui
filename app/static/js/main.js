@@ -190,6 +190,121 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+
+// ===== 战队名册：分页加载 & 触底刷新 =====
+let membersPage = 1;
+let membersPageSize = 12;
+let membersLoading = false;
+let membersFinished = false;
+
+function buildMemberCard(profile) {
+  const nickname =
+    (profile.user && profile.user.nickname) || "未知成员";
+  const avatarUrl = profile.avatar_url || "";
+  const age =
+    typeof profile.age === "number" ? profile.age : "-";
+  const gender = profile.gender || "-";
+  const tags = profile.other_tags || "竞技场爱好者";
+  const influence =
+    typeof profile.influence === "number" ? profile.influence : 1;
+  const rank =
+    typeof profile.current_season_rank === "number"
+      ? profile.current_season_rank
+      : null;
+
+  const card = document.createElement("div");
+  card.className = "card member-card member-card-animated";
+
+  card.innerHTML = `
+    <a href="/members/${profile.user_id}">
+      <div class="member-card-inner">
+        <div class="member-card-avatar"
+             style="${avatarUrl ? `background-image:url('${avatarUrl}')` : ""}">
+        </div>
+        <div class="member-card-info">
+          <div class="member-card-header">
+            <h3>${nickname}</h3>
+            <span class="member-card-badge">影响力 ${influence}</span>
+          </div>
+          <p class="member-card-meta">
+            年龄：${age} ｜ 性别：${gender}${
+              rank ? ` ｜ 当前赛季排名：${rank}` : ""
+            }
+          </p>
+          <p class="member-card-tags">${tags}</p>
+        </div>
+      </div>
+    </a>
+  `;
+
+  return card;
+}
+
+async function loadMembersPage() {
+  const grid = document.getElementById("members-grid");
+  const loadingEl = document.getElementById("members-loading");
+  const emptyEl = document.getElementById("members-empty");
+
+  if (!grid || membersLoading || membersFinished) return;
+
+  membersLoading = true;
+  if (loadingEl) loadingEl.style.display = "block";
+  if (emptyEl) emptyEl.style.display = "none";
+
+  try {
+    const res = await fetch(
+      `/api/members?page=${membersPage}&page_size=${membersPageSize}`
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("加载成员失败：", data);
+      membersFinished = true;
+      return;
+    }
+
+    if (Array.isArray(data) && data.length > 0) {
+      data.forEach((p) => {
+        grid.appendChild(buildMemberCard(p));
+      });
+
+      membersPage += 1;
+      if (data.length < membersPageSize) {
+        membersFinished = true;
+      }
+    } else {
+      if (membersPage === 1 && emptyEl) {
+        emptyEl.style.display = "block";
+      }
+      membersFinished = true;
+    }
+  } catch (err) {
+    console.error("加载成员出错：", err);
+  } finally {
+    membersLoading = false;
+    if (loadingEl) loadingEl.style.display = "none";
+  }
+}
+
+function initMembersPage() {
+  const grid = document.getElementById("members-grid");
+  if (!grid) return; // 不在战队名册页面
+
+  // 首次加载
+  loadMembersPage();
+
+  // 触底刷新：滚动接近底部时继续加载
+  window.addEventListener("scroll", () => {
+    if (
+      window.innerHeight + window.scrollY >=
+      document.body.offsetHeight - 200
+    ) {
+      loadMembersPage();
+    }
+  });
+}
+
+
 // 加载文章评论
 async function loadComments() {
   if (!window.QK_CURRENT_ARTICLE_ID) return;
@@ -251,7 +366,6 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// 卡牌页面逻辑
 // 卡牌评测页面逻辑
 async function initCardsPage() {
   const expansionSelect = document.getElementById("expansion-select");
@@ -657,6 +771,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadComments();
   initCardsPage();
   initCardDetailPage && initCardDetailPage();
+  initMembersPage(); // ✅ 战队名册页面初始化
 
   // 解码并显示昵称（后端对 nickname 做了 percent-encode）
   const rawNick = getCookie("user_nickname");

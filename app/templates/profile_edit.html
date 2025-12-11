@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+{% block title %}个人资料 - 敲可爱战队{% endblock %}
+
+{% block content %}
+<section class="qk-section">
+  <div class="qk-container">
+    <h2>个人资料 &amp; 战队成员信息</h2>
+    <div
+      class="qk-grid"
+      style="grid-template-columns: minmax(0, 320px) minmax(0, 1fr); align-items: flex-start;"
+    >
+      <!-- 左侧：头像 + 基本信息 -->
+      <div class="card">
+        <h3 style="margin-bottom: 12px;">我的头像</h3>
+        <form id="avatar-form" enctype="multipart/form-data">
+          <div
+            id="avatar-preview"
+            style="
+              width: 140px;
+              height: 140px;
+              border-radius: 50%;
+              background-size: cover;
+              background-position: center;
+              background-color: rgba(255, 255, 255, 0.06);
+              border: 1px solid rgba(255, 255, 255, 0.12);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 48px;
+              color: rgba(255, 255, 255, 0.4);
+              margin-bottom: 12px;
+            "
+          >
+            {{ current_user.nickname[0] if current_user.nickname else 'Q' }}
+          </div>
+
+          <p style="font-size: 13px; opacity: 0.8; margin-bottom: 8px;">
+            支持 JPG / PNG / WEBP，最大 2MB。上传后会自动覆盖之前的头像。
+          </p>
+
+          <input
+            type="file"
+            id="avatar-file"
+            name="file"
+            accept="image/png,image/jpeg,image/webp"
+            style="margin-bottom: 8px;"
+          />
+
+          <button type="submit" class="qk-btn qk-btn-primary">
+            上传新头像
+          </button>
+        </form>
+
+        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0;" />
+
+        <h3 style="margin-bottom: 8px;">账号信息</h3>
+        <p style="margin: 4px 0; font-size: 14px;">
+          <strong>用户名：</strong>{{ current_user.username }}
+        </p>
+        <p style="margin: 4px 0; font-size: 14px;">
+          <strong>邮箱：</strong>{{ current_user.email or '未绑定' }}
+        </p>
+        <p style="margin: 4px 0; font-size: 14px;">
+          <strong>角色：</strong>
+          {% if current_user.role.value == 'admin' %}
+            管理员
+          {% elif current_user.role.value == 'elite_member' %}
+            精英队员
+          {% elif current_user.role.value == 'member' %}
+            战队成员
+          {% else %}
+            普通用户
+          {% endif %}
+        </p>
+
+        <p style="margin-top: 12px; font-size: 13px; opacity: 0.85;">
+          若需修改邮箱或账号角色，请联系战队管理员处理。
+        </p>
+      </div>
+
+      <!-- 右侧：成员资料表单 -->
+      <div class="card">
+        <h3 style="margin-bottom: 16px;">战队成员资料</h3>
+        <form id="profile-form">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <!-- 昵称 -->
+            <div>
+              <label for="nickname" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                昵称
+              </label>
+              <input
+                type="text"
+                id="nickname"
+                name="nickname"
+                value="{{ current_user.nickname or '' }}"
+                placeholder="展示给战队成员看到的名字"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
+
+            <!-- 年龄 -->
+            <div>
+              <label for="age" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                年龄
+              </label>
+              <input
+                type="number"
+                id="age"
+                name="age"
+                min="0"
+                max="150"
+                placeholder="可选"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
+
+            <!-- 性别 -->
+            <div>
+              <label for="gender" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                性别
+              </label>
+              <select
+                id="gender"
+                name="gender"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              >
+                <option value="">保密</option>
+                <option value="男">男</option>
+                <option value="女">女</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+
+            <!-- 实力评分 -->
+            <div>
+              <label for="strength_score" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                实力评分
+              </label>
+              <input
+                type="text"
+                id="strength_score"
+                name="strength_score"
+                placeholder="例如：7+ 胜场选手 / 偶尔 12 胜"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
+
+            <!-- 平均胜场 -->
+            <div>
+              <label for="avg_arena_wins" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                平均竞技场胜场
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                id="avg_arena_wins"
+                name="avg_arena_wins"
+                placeholder="例如：7.2"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
+
+            <!-- 最高段位 / 代表成绩 -->
+            <div>
+              <label for="arena_best_rank" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                竞技场最佳成绩
+              </label>
+              <input
+                type="text"
+                id="arena_best_rank"
+                name="arena_best_rank"
+                placeholder="例如：亚服 12 胜多次 / 国服登顶"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
+          </div>
+
+          <!-- 其他标签 -->
+          <div style="margin-top: 12px;">
+            <label for="other_tags" style="display:block; font-size: 14px; margin-bottom: 4px;">
+              其他标签
+            </label>
+            <input
+              type="text"
+              id="other_tags"
+              name="other_tags"
+              placeholder="例如：偏好法师 / 爱玩快攻 / 喜欢研究奇怪卡组"
+              style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+            />
+          </div>
+
+          <!-- 个人简介 -->
+          <div style="margin-top: 12px;">
+            <label for="bio" style="display:block; font-size: 14px; margin-bottom: 4px;">
+              个人简介
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows="4"
+              placeholder="简单介绍一下自己、打牌风格、擅长的职业等，让战队成员更了解你～"
+              style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff; resize: vertical;"
+            ></textarea>
+          </div>
+
+          <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <button type="submit" class="qk-btn qk-btn-primary">
+              保存资料
+            </button>
+            <button
+              type="button"
+              id="profile-reset-btn"
+              class="qk-btn qk-btn-outline"
+            >
+              重新加载服务器数据
+            </button>
+          </div>
+
+          <p id="profile-message" style="margin-top: 8px; font-size: 13px; opacity: 0.9;"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // 依赖 main.js 里已经定义的 getToken()
+    if (typeof getToken !== "function") {
+      console.warn("getToken() 未定义，请确认 main.js 已正确加载");
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      alert("请先登录后再编辑个人资料");
+      window.location.href = "/login";
+      return;
+    }
+
+    const avatarForm = document.getElementById("avatar-form");
+    const avatarFileInput = document.getElementById("avatar-file");
+    const avatarPreview = document.getElementById("avatar-preview");
+
+    const profileForm = document.getElementById("profile-form");
+    const nicknameInput = document.getElementById("nickname");
+    const ageInput = document.getElementById("age");
+    const genderSelect = document.getElementById("gender");
+    const strengthInput = document.getElementById("strength_score");
+    const avgWinsInput = document.getElementById("avg_arena_wins");
+    const bestRankInput = document.getElementById("arena_best_rank");
+    const tagsInput = document.getElementById("other_tags");
+    const bioInput = document.getElementById("bio");
+    const resetBtn = document.getElementById("profile-reset-btn");
+    const messageEl = document.getElementById("profile-message");
+
+    function showMessage(text, isError) {
+      if (!messageEl) return;
+      messageEl.textContent = text || "";
+      messageEl.style.color = isError ? "#ff6b6b" : "#a3e635";
+    }
+
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/me/profile", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.detail || "加载个人资料失败", true);
+          return;
+        }
+
+        // 头像
+        if (data.avatar_url && avatarPreview) {
+          avatarPreview.style.backgroundImage = `url('${data.avatar_url}')`;
+          avatarPreview.textContent = "";
+        }
+
+        // 年龄
+        if (typeof data.age === "number") {
+          ageInput.value = data.age;
+        } else {
+          ageInput.value = "";
+        }
+
+        // 性别
+        if (data.gender) {
+          genderSelect.value = data.gender;
+        } else {
+          genderSelect.value = "";
+        }
+
+        // 实力评分
+        strengthInput.value = data.strength_score || "";
+
+        // 平均胜场
+        if (typeof data.avg_arena_wins === "number") {
+          avgWinsInput.value = data.avg_arena_wins;
+        } else {
+          avgWinsInput.value = "";
+        }
+
+        // 最佳成绩
+        bestRankInput.value = data.arena_best_rank || "";
+
+        // 其他标签
+        tagsInput.value = data.other_tags || "";
+
+        // 简介
+        bioInput.value = data.bio || "";
+
+        showMessage("已加载服务器中的资料。", false);
+      } catch (err) {
+        console.error(err);
+        showMessage("加载个人资料时出现异常。", true);
+      }
+    }
+
+    // 初次进入页面时加载资料
+    loadProfile();
+
+    // 头像上传
+    if (avatarForm && avatarFileInput) {
+      avatarForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const file = avatarFileInput.files[0];
+        if (!file) {
+          alert("请先选择一张图片");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const res = await fetch("/api/me/avatar", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            alert(data.detail || "上传头像失败");
+            return;
+          }
+
+          if (data.avatar_url && avatarPreview) {
+            avatarPreview.style.backgroundImage = `url('${data.avatar_url}')`;
+            avatarPreview.textContent = "";
+          }
+
+          alert("头像已更新");
+        } catch (err) {
+          console.error(err);
+          alert("上传头像时出现异常");
+        }
+      });
+    }
+
+    // 保存资料
+    if (profileForm) {
+      profileForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const payload = {
+          nickname: nicknameInput.value.trim() || null,
+          gender: genderSelect.value || null,
+          strength_score: strengthInput.value.trim() || null,
+          arena_best_rank: bestRankInput.value.trim() || null,
+          other_tags: tagsInput.value.trim() || null,
+          bio: bioInput.value.trim() || null,
+        };
+
+        // 只在有值时传数值字段，避免 NaN
+        const ageValue = ageInput.value.trim();
+        if (ageValue) {
+          payload.age = parseInt(ageValue, 10);
+        }
+
+        const avgValue = avgWinsInput.value.trim();
+        if (avgValue) {
+          payload.avg_arena_wins = parseFloat(avgValue);
+        }
+
+        try {
+          const res = await fetch("/api/me/profile", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            showMessage(data.detail || "保存失败", true);
+            return;
+          }
+
+          showMessage("资料已保存。", false);
+        } catch (err) {
+          console.error(err);
+          showMessage("保存时出现异常。", true);
+        }
+      });
+    }
+
+    // 重新从服务器加载资料
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        loadProfile();
+      });
+    }
+  });
+</script>
+{% endblock %}

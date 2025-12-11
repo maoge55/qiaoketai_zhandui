@@ -1,28 +1,22 @@
 {% extends "base.html" %}
 {% block title %}战队名册 - 敲可爱战队{% endblock %}
+
 {% block content %}
 <div class="qk-container">
   <h1>战队名册</h1>
-  <div class="qk-grid members-grid">
-    {% for p in members %}
-    <div class="card member-card">
-      <a href="/members/{{ p.user_id }}">
-        <div class="avatar"
-             style="background-image:url('{{ p.avatar_url or '' }}');"></div>
-        <div class="info">
-          <h3>{{ p.user.nickname if p.user else '未知成员' }}</h3>
-          <p class="meta">
-            年龄：{{ p.age or '-' }} | 性别：{{ p.gender or '-' }}
-          </p>
-          <p class="tags">
-            {{ p.other_tags or '竞技场爱好者' }}
-          </p>
-        </div>
-      </a>
-    </div>
-    {% else %}
-    <p>暂时没有成员。</p>
-    {% endfor %}
+  <p class="members-subtitle">
+    按照 <strong>影响力</strong> 与 <strong>当前赛季表现</strong> 排序，影响力越高、名次越靠前的成员会排在前面。
+  </p>
+
+  <div class="qk-grid members-grid" id="members-grid">
+    <!-- 成员卡片将由 JS 动态插入 -->
+  </div>
+
+  <div id="members-loading" class="members-loading" style="display:none;">
+    正在加载更多成员...
+  </div>
+  <div id="members-empty" class="members-empty" style="display:none;">
+    暂时没有成员。
   </div>
 </div>
 {% endblock %}

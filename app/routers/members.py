@@ -1,6 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pathlib import Path
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import (
@@ -14,14 +16,27 @@ from app.schemas import (
     UserProfileUpdate,
     AchievementOut,
 )
-
+import hashlib
 router = APIRouter(prefix="/api", tags=["members"])
 
+# 头像上传目录：app/static/avatars
+BASE_DIR = Path(__file__).resolve().parent.parent  # app/
+AVATAR_DIR = BASE_DIR / "static" / "avatars"
+AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("/members", response_model=List[UserProfileOut])
-def list_members(db: Session = Depends(get_db)):
-    # 只展示角色 >= member 的用户
-    members = (
+def list_members(
+    page: int = 1,
+    page_size: int = 12,
+    db: Session = Depends(get_db)):
+    # 分页安全处理
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 50:
+        page_size = 12
+
+    # 只展示战队成员及以上
+    q = (
         db.query(UserProfile)
         .join(User)
         .filter(
@@ -29,25 +44,31 @@ def list_members(db: Session = Depends(get_db)):
                 [UserRole.MEMBER, UserRole.ELITE_MEMBER, UserRole.ADMIN]
             )
         )
-        .all()
     )
 
-    result = []
-    for p in members:
-        result.append(
-            UserProfileOut(
-                user_id=p.user_id,
-                avatar_url=p.avatar_url,
-                age=p.age,
-                gender=p.gender,
-                strength_score=p.strength_score,
-                bio=p.bio,
-                avg_arena_wins=p.avg_arena_wins,
-                arena_best_rank=p.arena_best_rank,
-                other_tags=p.other_tags,
-            )
-        )
-    return result
+    # NULL 排到后面
+    rank_is_null = case(
+        (UserProfile.current_season_rank.is_(None), 1),
+        else_=0,
+    )
+
+    # ✅ 排序规则：
+    # 1）影响力高的排在前面（desc）
+    # 2）有当前赛季排名的排在前面，名次数字越小越靠前
+    # 3）然后按用户 id 稳定排序
+    q = q.order_by(
+        UserProfile.influence.desc(),
+        rank_is_null,
+        UserProfile.current_season_rank.asc(),
+        User.id.asc(),
+    )
+
+    profiles = (
+        q.offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return profiles
 
 
 @router.get("/members/{user_id}")
@@ -148,3 +169,78 @@ def update_my_profile(
     db.commit()
     db.refresh(profile)
     return UserProfileOut.from_orm(profile)
+
+@router.post("/me/avatar")
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    当前登录用户上传头像：
+    - 所有已登录用户都可以调用（不限制角色）
+    - 同一邮箱用户只保留一张头像文件
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="未登录，无法上传头像")
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="只能上传图片类型文件")
+
+    # 限制类型：JPG / PNG / WEBP
+    allowed_types = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+    }
+    ext = allowed_types.get(file.content_type)
+    if not ext:
+        raise HTTPException(
+            status_code=400,
+            detail="只支持 JPG / PNG / WEBP 格式的头像",
+        )
+
+    # 按邮箱生成唯一文件名（邮箱本身在 users 表中是唯一的）
+    email = (current_user.email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="当前账号没有绑定邮箱，无法上传头像")
+
+    email_hash = hashlib.md5(email.encode("utf-8")).hexdigest()
+
+    # 清理旧文件：同一 hash 前缀的文件全部删掉，保证后端只保留一份
+    for old in AVATAR_DIR.glob(f"{email_hash}.*"):
+        try:
+            old.unlink()
+        except OSError:
+            # 不影响主流程
+            pass
+
+    filename = f"{email_hash}{ext}"
+    file_path = AVATAR_DIR / filename
+
+    # 读入文件并限制大小（示例：最大 2MB）
+    data = await file.read()
+    max_size = 2 * 1024 * 1024  # 2MB
+    if len(data) > max_size:
+        raise HTTPException(status_code=400, detail="头像文件不能超过 2MB")
+
+    file_path.write_bytes(data)
+
+    # 更新 / 创建 UserProfile 头像字段
+    profile = (
+        db.query(UserProfile)
+        .filter(UserProfile.user_id == current_user.id)
+        .first()
+    )
+    if not profile:
+        profile = UserProfile(user_id=current_user.id)
+        db.add(profile)
+
+    # 存的是可直接访问的 URL
+    profile.avatar_url = f"/static/avatars/{filename}"
+
+    db.commit()
+    db.refresh(profile)
+
+    return {"avatar_url": profile.avatar_url}

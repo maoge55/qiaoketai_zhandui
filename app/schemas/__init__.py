@@ -52,6 +52,9 @@ class UserProfileBase(BaseModel):
     avg_arena_wins: Optional[float] = None
     arena_best_rank: Optional[str] = None
     other_tags: Optional[str] = None
+    # ✅ 新增：影响力 + 当前赛季排名（只读用）
+    influence: int | None = None
+    current_season_rank: int | None = None
 
     class Config:
         from_attributes = True
@@ -63,6 +66,10 @@ class UserProfileOut(UserProfileBase):
 
 class UserProfileUpdate(UserProfileBase):
     nickname: Optional[str] = None
+
+class UserProfileAdminUpdate(BaseModel):
+    influence: int | None = None
+    current_season_rank: int | None = None
 
 
 class SendVerificationCodeRequest(BaseModel):

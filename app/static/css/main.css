@@ -1022,3 +1022,113 @@ a {
   text-align: center;
   padding: 2rem 0;
 }
+
+/* ===== 战队名册：卡片布局 & 背景动画 ===== */
+
+.members-subtitle {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.members-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* 资料卡片：更亮一点的渐变背景 + 圆角 + 边框 */
+.member-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: radial-gradient(circle at top left,
+      rgba(255, 180, 50, 0.18),
+      rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* 循环类特效动画：轻微上下浮动 + 发光呼吸感 */
+@keyframes member-card-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 180, 50, 0);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(255, 180, 50, 0.3);
+    transform: translateY(-3px);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(255, 180, 50, 0);
+    transform: translateY(0);
+  }
+}
+
+.member-card-animated {
+  animation: member-card-glow 7s ease-in-out infinite;
+}
+
+/* 卡片内部布局：左头像、右文字区域 */
+.member-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.member-card-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(15, 23, 42, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.member-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.member-card-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.member-card-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(251, 191, 36, 0.16);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.6);
+  white-space: nowrap;
+}
+
+.member-card-meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.member-card-tags {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #e5e7eb;
+}
+
+.members-loading,
+.members-empty {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}

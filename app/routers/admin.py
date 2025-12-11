@@ -4,8 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, require_admin
-from app.models import User, Article, HomepageConfig, UserRole, ArticleStatus
-from app.schemas import HomepageConfigUpdate, HomepageConfigOut
+from app.models import User, Article, HomepageConfig, UserRole, ArticleStatus, UserProfile
+from app.schemas import (
+    HomepageConfigUpdate,
+    HomepageConfigOut,
+    UserProfileAdminUpdate,
+)
+
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -41,6 +46,38 @@ def admin_update_user(
         user.role = UserRole(role)
     db.commit()
     return {"message": "更新成功"}
+
+@router.put("/members/{user_id}/profile_admin")
+def admin_update_member_profile(
+    user_id: int,
+    payload: UserProfileAdminUpdate,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    # 确保用户存在
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # 找到或创建 profile
+    profile = (
+        db.query(UserProfile)
+        .filter(UserProfile.user_id == user_id)
+        .first()
+    )
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.add(profile)
+
+    # 只有管理员通过这个接口才能改影响力和当前赛季排名
+    if payload.influence is not None:
+        profile.influence = payload.influence
+    if payload.current_season_rank is not None:
+        profile.current_season_rank = payload.current_season_rank
+
+    db.commit()
+    db.refresh(profile)
+    return profile
 
 
 @router.get("/articles")

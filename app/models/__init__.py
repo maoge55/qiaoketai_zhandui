@@ -64,7 +64,10 @@ class UserProfile(Base):
     avg_arena_wins = Column(Float, nullable=True)
     arena_best_rank = Column(String(255), nullable=True)
     other_tags = Column(String(255), nullable=True)
-
+    # ✅ 新增：影响力（默认 1），数值越大影响力越高
+    influence = Column(Integer, nullable=False, default=1)
+    # ✅ 新增：当前赛季排名（1 表示第一名，数字越小越靠前）
+    current_season_rank = Column(Integer, nullable=True)
     user = relationship("User", back_populates="profile")
 
 
