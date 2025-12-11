@@ -606,8 +606,8 @@ async function initCardsPage() {
 
   // ---------- 事件监听 ----------
 
-  await loadExpansions();
-  await loadCards(true);
+ // 并行加载版本列表 + 首屏卡牌
+  await Promise.all([loadExpansions(), loadCards(true)]);
 
   expansionSelect.addEventListener("change", () => loadCards(true));
   if (classSelect) {
