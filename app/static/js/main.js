@@ -359,7 +359,25 @@ async function initCardsPage() {
     const cardClass = card.card_class || "中立";
     const rarity = card.rarity || "";
 
-    // 注意：这里刻意不再显示卡牌名称（例如“静电震击”）
+    // 稀有度颜色 class 映射
+    let rarityClass = "rarity-common";
+    switch (rarity) {
+      case "稀有":
+        rarityClass = "rarity-rare";
+        break;
+      case "史诗":
+        rarityClass = "rarity-epic";
+        break;
+      case "传说":
+        rarityClass = "rarity-legendary";
+        break;
+      case "免费":
+      case "普通":
+      default:
+        rarityClass = "rarity-common"; // 免费和普通都用白色
+        break;
+    }
+
     return `
       <div class="card card-small card-eval" data-card-id="${card.id}">
         <div class="card-image-wrap">
@@ -371,7 +389,9 @@ async function initCardsPage() {
           />
         </div>
         <div class="card-body">
-          <p class="card-meta">${cardClass} · ${rarity}</p>
+          <p class="card-meta">
+            ${cardClass} · <span class="${rarityClass}">${rarity || "免费"}</span>
+          </p>
           <p class="card-score ${scoreClass}">竞技场评分：${scoreText}</p>
           <p class="card-winrate">${winrateText}</p>
           <p class="card-review">${shortReview}</p>

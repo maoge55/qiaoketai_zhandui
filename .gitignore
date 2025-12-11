@@ -121,5 +121,5 @@ node_modules/
 .coverage
 coverage.xml
 htmlcov/
-
+test.py
 # End of file

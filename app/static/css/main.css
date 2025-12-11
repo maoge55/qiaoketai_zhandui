@@ -34,6 +34,11 @@ a {
   padding: 0 16px;
 }
 
+/* 卡牌评测页面：容器稍微放宽一点，让一行能多放几张卡 */
+.qk-container.cards-page {
+  max-width: 1400px;  /* 可以根据喜好改成 1360 / 1500 等 */
+}
+
 .qk-header {
   position: sticky;
   top: 0;
@@ -247,7 +252,7 @@ a {
 }
 
 .cards-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .card {
@@ -918,11 +923,12 @@ a {
 .card-art {
   width: 100%;
   height: auto;
-  max-width: 260px;
+  max-width: 320px; /* 原来是 260px */
   object-fit: contain;
   filter: drop-shadow(0 18px 25px rgba(0, 0, 0, 0.8));
   transition: transform 0.2s ease, filter 0.2s ease;
 }
+
 
 .card.card-eval:hover .card-art {
   transform: translateY(-4px) scale(1.02);
@@ -940,6 +946,25 @@ a {
   font-size: 0.85rem;
   color: #9ca3af;
 }
+
+/* 稀有度颜色 */
+.rarity-common,
+.rarity-free {
+  color: #e5e7eb; /* 接近白色 */
+}
+
+.rarity-rare {
+  color: #60a5fa; /* 蓝色 */
+}
+
+.rarity-epic {
+  color: #a855f7; /* 紫色 */
+}
+
+.rarity-legendary {
+  color: #f97316; /* 橙色 */
+}
+
 
 /* 评分颜色：紫色 > 绿色 > 红色 */
 .card-score {

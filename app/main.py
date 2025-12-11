@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-
+from pathlib import Path
 from app.database import engine
 from app.models import Base
 from app.routers import (
@@ -22,6 +22,10 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="敲可爱战队 - 炉石竞技场战队官网", version="0.1.0")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# ✅ 新增：favicon 路由
+BASE_DIR = Path(__file__).resolve().parent
+FAVICON_PATH = BASE_DIR / "static" / "favicon.ico"
 
 # API 路由
 app.include_router(auth_router.router)
