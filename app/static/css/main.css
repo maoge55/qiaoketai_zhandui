@@ -1023,7 +1023,7 @@ a {
   padding: 2rem 0;
 }
 
-/* ===== 战队名册：卡片布局 & 背景动画 ===== */
+/* ===== 战队名册 · 成员名片样式（最终版） ===== */
 
 .members-subtitle {
   margin-bottom: 0.75rem;
@@ -1031,146 +1031,37 @@ a {
   color: var(--muted);
 }
 
-.members-grid {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-/* 资料卡片：更亮一点的渐变背景 + 圆角 + 边框 */
-.member-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 18px;
-  padding: 14px 16px;
-  background: radial-gradient(circle at top left,
-      rgba(255, 180, 50, 0.18),
-      rgba(15, 23, 42, 0.95));
-  border: 1px solid rgba(148, 163, 184, 0.4);
-}
-
-/* 循环类特效动画：轻微上下浮动 + 发光呼吸感 */
-@keyframes member-card-glow {
-  0% {
-    box-shadow: 0 0 0 rgba(255, 180, 50, 0);
-    transform: translateY(0);
-  }
-  50% {
-    box-shadow: 0 0 24px rgba(255, 180, 50, 0.3);
-    transform: translateY(-3px);
-  }
-  100% {
-    box-shadow: 0 0 0 rgba(255, 180, 50, 0);
-    transform: translateY(0);
-  }
-}
-
-.member-card-animated {
-  animation: member-card-glow 7s ease-in-out infinite;
-}
-
-/* 卡片内部布局：左头像、右文字区域 */
-.member-card-inner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.member-card-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 999px;
-  background-size: cover;
-  background-position: center;
-  background-color: rgba(15, 23, 42, 0.8);
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  flex-shrink: 0;
-}
-
-.member-card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.member-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.member-card-header h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.member-card-badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  background: rgba(251, 191, 36, 0.16);
-  color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.6);
-  white-space: nowrap;
-}
-
-.member-card-meta {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.member-card-tags {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
-  color: #e5e7eb;
-}
-
-.members-loading,
-.members-empty {
-  text-align: center;
-  margin-top: 1.25rem;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-/* ===== 战队名册 · 成员名片样式 ===== */
-
-.members-subtitle {
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-/* 每行一张名片，让它足够宽气派 */
+/* 每行一张名片，让它又宽又有存在感 */
 .members-grid {
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* 外层名片卡片：更亮一点的渐变背景，和页面背景区分开 */
+/* 外层名片卡片：明显亮于背景 + 更高一点 */
 .member-card {
   max-width: 980px;
-  margin: 0 auto 20px;
-  padding: 18px 24px;
-  border-radius: 26px;
-  background: linear-gradient(
-      120deg,
-      rgba(248, 250, 252, 0.12),
-      rgba(56, 189, 248, 0.18),
+  margin: 0 auto 24px;
+  padding: 22px 28px;
+  border-radius: 28px;
+  min-height: 180px; /* ✅ 直接拉高整体高度 */
+  background: radial-gradient(
+      circle at top left,
+      rgba(248, 250, 252, 0.22),
+      rgba(96, 165, 250, 0.35),
       rgba(15, 23, 42, 0.96)
   );
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid rgba(191, 219, 254, 0.85);
   box-shadow: 0 26px 52px rgba(15, 23, 42, 0.9);
   overflow: hidden;
 }
 
-/* 循环特效动画：轻微上浮 + 光晕呼吸 */
+/* 循环特效动画：轻微上浮 + 金色光晕呼吸 */
 @keyframes member-card-glow {
   0% {
     box-shadow: 0 0 0 rgba(251, 191, 36, 0);
     transform: translateY(0);
   }
   50% {
-    box-shadow: 0 0 28px rgba(251, 191, 36, 0.35);
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.42);
     transform: translateY(-4px);
   }
   100% {
@@ -1183,24 +1074,25 @@ a {
   animation: member-card-glow 8s ease-in-out infinite;
 }
 
+/* 整张卡片是一个大链接：左头像 / 中信息 / 右徽章 */
 .member-card-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 22px;
   text-decoration: none;
   color: inherit;
 }
 
 /* 左侧：方形头像卡片，完整展示图片 */
 .member-card-avatar {
-  width: 116px;
-  height: 116px;
-  border-radius: 18px;
+  width: 130px;
+  height: 130px;
+  border-radius: 20px;
   background-size: cover;
   background-position: center;
   background-color: #020617;
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.95);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.95);
   flex-shrink: 0;
 }
 
@@ -1210,7 +1102,7 @@ a {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .member-card-top {
@@ -1222,30 +1114,31 @@ a {
 
 .member-card-name {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.12rem;
 }
 
 .member-card-rank {
-  padding: 2px 10px;
+  padding: 3px 12px;
   border-radius: 999px;
   font-size: 0.8rem;
-  background: rgba(59, 130, 246, 0.18);
-  border: 1px solid rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.22);
+  border: 1px solid rgba(59, 130, 246, 0.8);
   color: #bfdbfe;
   white-space: nowrap;
 }
 
+/* 年龄 / 性别 */
 .member-card-meta {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--muted);
 }
 
-/* 标签颜色换成更亮的蓝白色 */
+/* 标签：用浅蓝偏亮，让信息更突出 */
 .member-card-tags {
   margin: 0;
   margin-top: 4px;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   color: #e0f2fe;
 }
 
@@ -1258,15 +1151,15 @@ a {
 }
 
 .member-card-influence {
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
   font-size: 0.86rem;
-  background: rgba(250, 204, 21, 0.2);
-  border: 1px solid rgba(250, 204, 21, 0.85);
+  background: rgba(250, 204, 21, 0.22);
+  border: 1px solid rgba(250, 204, 21, 0.9);
   color: #facc15;
 }
 
-/* hover 时轻微上浮，配合光晕更有“金边卡牌”感觉 */
+/* hover 时再轻微上浮一点点，叠加动画，更有“金边卡牌”的感觉 */
 .member-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
 }
