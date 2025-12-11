@@ -1031,6 +1031,11 @@ a {
   color: var(--muted);
 }
 
+/* 名册页：把容器放大到视口 80%（最多 1400px） */
+body:has(#members-grid) .qk-container {
+  max-width: min(80vw, 1400px);
+}
+
 /* 每行一张名片，让它又宽又有存在感 */
 .members-grid {
   grid-template-columns: minmax(0, 1fr);
@@ -1038,18 +1043,19 @@ a {
 
 /* 外层名片卡片：明显亮于背景 + 更高一点 */
 .member-card {
-  max-width: 980px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto 24px;
   padding: 22px 28px;
   border-radius: 28px;
-  min-height: 180px; /* ✅ 直接拉高整体高度 */
-  background: radial-gradient(
-      circle at top left,
-      rgba(248, 250, 252, 0.22),
-      rgba(96, 165, 250, 0.35),
-      rgba(15, 23, 42, 0.96)
+  min-height: 180px; /* 直接拉高整体高度 */
+  background: linear-gradient(
+      135deg,
+      rgba(30, 64, 175, 0.95),
+      rgba(37, 99, 235, 0.95),
+      rgba(56, 189, 248, 0.9)
   );
-  border: 1px solid rgba(191, 219, 254, 0.85);
+  border: 1px solid rgba(191, 219, 254, 0.9);
   box-shadow: 0 26px 52px rgba(15, 23, 42, 0.9);
   overflow: hidden;
 }
