@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}加入战队 - 敲可爱战队{% endblock %}
+
+{% block content %}
+<div class="qk-container">
+  <div class="card">
+    <h1>加入敲可爱战队</h1>
+    <p class="meta">欢迎来到竞技场主城！这里是加入战队的指引页。</p>
+
+    <div style="display:grid; gap:16px; margin-top: 16px;">
+      <div class="card" style="background: rgba(255,255,255,0.02);">
+        <h3>① 先注册账号</h3>
+        <p>如果你还没有账号，请先去 <a href="/register">注册</a>。已有账号可直接 <a href="/login">登录</a>。</p>
+      </div>
+
+      <div class="card" style="background: rgba(255,255,255,0.02);">
+        <h3>② 获取并填写「会员码」</h3>
+        <p>
+          战队成员会发放 <strong>会员码</strong>。在注册页面填写会员码后，会自动获得对应成员等级（成员 / 大神成员 / 管理员）。
+        </p>
+        <p class="meta">提示：会员码不会在网站公开展示，请通过战队管理或队长渠道获取。</p>
+        <p><a class="qk-btn qk-btn-primary" href="/register">去注册（填写会员码）</a></p>
+      </div>
+
+      <div class="card" style="background: rgba(255,255,255,0.02);">
+        <h3>③ 完善成员资料</h3>
+        <p>
+          成为成员后，可以在右上角用户菜单进入「编辑成员资料」，上传头像、填写简介与擅长职业等信息。
+        </p>
+      </div>
+
+      <div class="card" style="background: rgba(255,255,255,0.02);">
+        <h3>④ 参与内容建设</h3>
+        <p>
+          大神成员与管理员可以发布竞技场攻略（竞技场宝典）与维护内容。
+        </p>
+        <p class="meta">如果你已经是大神成员：在右上角菜单会出现「发布攻略」。</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

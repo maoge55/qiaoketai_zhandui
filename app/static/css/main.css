@@ -635,6 +635,38 @@ a {
   color: var(--text);
 }
 
+/* 通用输入控件：用于 select / textarea / 非 qk-field 容器 */
+.qk-input,
+select.qk-input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #020617;
+  color: var(--text);
+}
+
+.qk-textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: #020617;
+  color: var(--text);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.qk-table th,
+.qk-table td {
+  vertical-align: top;
+  font-size: 14px;
+}
+
+.qk-table a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
 .auth-submit {
   width: 100%;
   margin-top: 8px;

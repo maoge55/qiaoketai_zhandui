@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}后台管理 - 敲可爱战队{% endblock %}
+
+{% block content %}
+<div class="qk-container">
+  <div class="card" style="padding: 0; overflow:hidden;">
+    <div style="display:flex; min-height: 520px;">
+      <aside style="width: 220px; border-right: 1px solid var(--border-color); padding: 16px;">
+        <h2 style="margin:0 0 10px;">后台管理</h2>
+        <p class="meta" style="margin-top:0;">仅管理员可用</p>
+        <nav style="display:grid; gap:8px; margin-top: 12px;">
+          <a class="qk-btn qk-btn-outline" href="/admin">文章管理</a>
+          <a class="qk-btn qk-btn-outline" href="/admin/members">成员管理</a>
+          <a class="qk-btn qk-btn-outline" href="/admin/homepage">首页配置</a>
+        </nav>
+        <hr style="border:0; border-top: 1px solid var(--border-color); margin: 16px 0;" />
+        <p class="meta">操作会直接影响线上展示，请谨慎。</p>
+      </aside>
+
+      <main style="flex:1; padding: 18px;">
+        {% block admin_content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</div>
+{% endblock %}

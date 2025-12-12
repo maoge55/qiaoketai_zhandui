@@ -314,3 +314,43 @@ async def admin_page(
         "admin_articles.html",
         {"request": request, "current_user": current_user},
     )
+
+@router.get("/admin/members", response_class=HTMLResponse)
+async def admin_members_page(
+    request: Request, current_user=Depends(get_current_user_from_cookie)
+):
+    if not current_user or current_user.role != UserRole.ADMIN:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "管理员专用入口",
+                "current_user": current_user,
+            },
+            status_code=403,
+        )
+    return templates.TemplateResponse(
+        "admin_members.html",
+        {"request": request, "current_user": current_user},
+    )
+
+
+@router.get("/admin/homepage", response_class=HTMLResponse)
+async def admin_homepage_page(
+    request: Request, current_user=Depends(get_current_user_from_cookie)
+):
+    if not current_user or current_user.role != UserRole.ADMIN:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "管理员专用入口",
+                "current_user": current_user,
+            },
+            status_code=403,
+        )
+    return templates.TemplateResponse(
+        "admin_homepage.html",
+        {"request": request, "current_user": current_user},
+    )
+

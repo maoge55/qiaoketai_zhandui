@@ -1,0 +1,123 @@
+{% extends "admin_base.html" %}
+{% block admin_content %}
+<h1 style="margin-top:0;">文章管理</h1>
+<p class="meta">查看/下架/删除文章。下架 = 设为 draft；删除 = 设为 deleted。</p>
+
+<div style="display:flex; gap:10px; align-items:center; margin: 12px 0 18px;">
+  <button class="qk-btn qk-btn-primary" id="btn-reload-articles">刷新列表</button>
+  <a class="qk-btn qk-btn-outline" href="/guides/new">发布新攻略</a>
+  <span class="meta" id="admin-articles-status"></span>
+</div>
+
+<div style="overflow:auto;">
+  <table class="qk-table" style="width:100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">ID</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">标题</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">作者</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">状态</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">创建时间</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">操作</th>
+      </tr>
+    </thead>
+    <tbody id="admin-articles-tbody"></tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+{% block body_extra %}
+<script>
+async function adminFetch(url, options = {}) {
+  const token = getToken();
+  if (!token) return (window.location.href = "/login");
+  const headers = options.headers || {};
+  headers["Authorization"] = "Bearer " + token;
+  options.headers = headers;
+  const res = await fetch(url, options);
+  return res;
+}
+
+function fmtDate(v) {
+  try {
+    return new Date(v).toLocaleString();
+  } catch(e) { return v || ""; }
+}
+
+async function loadAdminArticles() {
+  const status = document.getElementById("admin-articles-status");
+  const tbody = document.getElementById("admin-articles-tbody");
+  status.textContent = "加载中...";
+  tbody.innerHTML = "";
+
+  const res = await adminFetch("/api/admin/articles");
+  const data = await res.json();
+  if (!res.ok) {
+    status.textContent = "";
+    return alert(data.detail || "加载失败");
+  }
+
+  for (const a of data) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">#${a.id}</td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+        <a href="/guides/${a.id}" target="_blank" rel="noopener">${a.title}</a>
+      </td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${a.author}</td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+        <select data-id="${a.id}" class="admin-article-status qk-input" style="max-width: 160px;">
+          <option value="draft">draft</option>
+          <option value="published">published</option>
+          <option value="deleted">deleted</option>
+        </select>
+      </td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${fmtDate(a.created_at)}</td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color); display:flex; gap:8px; align-items:center;">
+        <button class="qk-btn qk-btn-outline admin-article-save" data-id="${a.id}">保存</button>
+        <button class="qk-btn qk-btn-outline admin-article-delete" data-id="${a.id}">删除</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+    const sel = tr.querySelector("select");
+    sel.value = a.status || "draft";
+  }
+
+  status.textContent = `共 ${data.length} 篇`;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("btn-reload-articles")?.addEventListener("click", loadAdminArticles);
+
+  document.body.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("admin-article-save")) {
+      const id = e.target.dataset.id;
+      const sel = document.querySelector(`select.admin-article-status[data-id="${id}"]`);
+      const statusVal = sel.value;
+      const res = await adminFetch(`/api/admin/articles/${id}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ status: statusVal }),
+      });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail || "更新失败");
+      alert("更新成功");
+      loadAdminArticles();
+    }
+
+    if (e.target.classList.contains("admin-article-delete")) {
+      const id = e.target.dataset.id;
+      if (!confirm("确认删除？（会把状态设为 deleted）")) return;
+      const res = await adminFetch(`/api/admin/articles/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) return alert(data.detail || "删除失败");
+      alert("删除成功");
+      loadAdminArticles();
+    }
+  });
+
+  loadAdminArticles();
+});
+</script>
+{% endblock %}

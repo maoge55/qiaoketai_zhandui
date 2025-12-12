@@ -1,0 +1,127 @@
+{% extends "admin_base.html" %}
+{% block admin_content %}
+<h1 style="margin-top:0;">成员管理</h1>
+<p class="meta">修改用户角色；以及（可选）编辑成员影响力/当前赛季排名。</p>
+
+<div style="display:flex; gap:10px; align-items:center; margin: 12px 0 18px;">
+  <button class="qk-btn qk-btn-primary" id="btn-reload-users">刷新列表</button>
+  <span class="meta" id="admin-users-status"></span>
+</div>
+
+<div style="overflow:auto;">
+  <table class="qk-table" style="width:100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">ID</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">用户名</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">昵称</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">邮箱</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">角色</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">影响力</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">赛季排名</th>
+        <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border-color);">操作</th>
+      </tr>
+    </thead>
+    <tbody id="admin-users-tbody"></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+async function adminFetch(url, options = {}) {
+  const token = getToken();
+  if (!token) return (window.location.href = "/login");
+  const headers = options.headers || {};
+  headers["Authorization"] = "Bearer " + token;
+  options.headers = headers;
+  return fetch(url, options);
+}
+
+async function loadAdminUsers() {
+  const status = document.getElementById("admin-users-status");
+  const tbody = document.getElementById("admin-users-tbody");
+  status.textContent = "加载中...";
+  tbody.innerHTML = "";
+
+  const res = await adminFetch("/api/admin/users");
+  const data = await res.json();
+  if (!res.ok) {
+    status.textContent = "";
+    return alert(data.detail || "加载失败");
+  }
+
+  for (const u of data) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">#${u.id}</td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${u.username}</td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);"><a href="/members/${u.id}" target="_blank">${u.nickname}</a></td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${u.email}</td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+        <select class="admin-user-role qk-input" data-id="${u.id}" style="max-width: 160px;">
+          <option value="visitor">visitor</option>
+          <option value="user">user</option>
+          <option value="member">member</option>
+          <option value="elite_member">elite_member</option>
+          <option value="admin">admin</option>
+        </select>
+      </td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+        <input class="admin-user-influence qk-input" data-id="${u.id}" type="number" style="max-width: 120px;" value="${u.influence ?? ''}" placeholder="(空)" />
+      </td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+        <input class="admin-user-rank qk-input" data-id="${u.id}" type="number" style="max-width: 120px;" value="${u.current_season_rank ?? ''}" placeholder="(空)" />
+      </td>
+      <td style="padding:10px; border-bottom: 1px solid var(--border-color); display:flex; gap:8px; align-items:center;">
+        <button class="qk-btn qk-btn-outline admin-user-save" data-id="${u.id}">保存</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+    tr.querySelector("select").value = u.role;
+  }
+
+  status.textContent = `共 ${data.length} 人`;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("btn-reload-users")?.addEventListener("click", loadAdminUsers);
+
+  document.body.addEventListener("click", async (e) => {
+    if (!e.target.classList.contains("admin-user-save")) return;
+    const id = e.target.dataset.id;
+
+    const role = document.querySelector(`select.admin-user-role[data-id="${id}"]`).value;
+    const influenceVal = document.querySelector(`input.admin-user-influence[data-id="${id}"]`).value;
+    const rankVal = document.querySelector(`input.admin-user-rank[data-id="${id}"]`).value;
+
+    // 1) 更新 role
+    const res1 = await adminFetch(`/api/admin/users/${id}`, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ role }),
+    });
+    const d1 = await res1.json();
+    if (!res1.ok) return alert(d1.detail || "更新角色失败");
+
+    // 2) 更新 profile（影响力/排名）
+    const payload = {
+      influence: influenceVal === "" ? null : Number(influenceVal),
+      current_season_rank: rankVal === "" ? null : Number(rankVal),
+    };
+    const res2 = await adminFetch(`/api/admin/members/${id}/profile_admin`, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+    const d2 = await res2.json();
+    if (!res2.ok) return alert(d2.detail || "更新资料失败");
+
+    alert("更新成功");
+    loadAdminUsers();
+  });
+
+  loadAdminUsers();
+});
+</script>
+{% endblock %}

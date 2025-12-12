@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}发布攻略 - 竞技场宝典{% endblock %}
+
+{% block content %}
+<div class="qk-container">
+  <div class="card">
+    <h1>发布竞技场攻略</h1>
+    <p class="meta">仅大神成员/管理员可发布。支持粘贴 HTML（会原样渲染），也可以直接写纯文本。</p>
+
+    <form id="guide-new-form" style="display:grid; gap: 14px; margin-top: 16px;">
+      <label class="qk-field">
+        <span class="qk-label">标题</span>
+        <input id="g-title" class="qk-input" placeholder="例如：新版本竞技场选牌思路（2025.12）" required />
+      </label>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <label class="qk-field">
+          <span class="qk-label">分类（可选）</span>
+          <input id="g-category" class="qk-input" placeholder="例如：选牌 / 对局 / 职业指南" />
+        </label>
+
+        <label class="qk-field">
+          <span class="qk-label">标签（可选，逗号分隔）</span>
+          <input id="g-tags" class="qk-input" placeholder="例如：德鲁伊, 新版本, Arena" />
+        </label>
+      </div>
+
+      {% if current_user and current_user.role.value == 'admin' %}
+      <label class="qk-field" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="g-featured" />
+        <span class="qk-label" style="margin:0;">设为首页精选</span>
+      </label>
+      {% endif %}
+
+      <label class="qk-field">
+        <span class="qk-label">正文</span>
+        <textarea id="g-content" class="qk-textarea" rows="14" placeholder="建议：分段、加小标题。支持 HTML（例如 <h2>、<ul> 等）。" required></textarea>
+        <small class="meta">安全提示：内容会以 safe 方式渲染，请只发布可信内容（避免粘贴未知脚本）。</small>
+      </label>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="submit" class="qk-btn qk-btn-primary">发布</button>
+        <a href="/guides" class="qk-btn qk-btn-outline">返回列表</a>
+        <span id="g-status" class="meta"></span>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("guide-new-form");
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const token = getToken();
+      if (!token) return (window.location.href = "/login");
+
+      const title = document.getElementById("g-title").value.trim();
+      const category = document.getElementById("g-category").value.trim();
+      const tagsRaw = document.getElementById("g-tags").value.trim();
+      const content = document.getElementById("g-content").value;
+      const featuredEl = document.getElementById("g-featured");
+      const is_featured = featuredEl ? !!featuredEl.checked : false;
+
+      const tags = tagsRaw ? tagsRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean) : [];
+
+      const status = document.getElementById("g-status");
+      status.textContent = "发布中...";
+
+      const res = await fetch("/api/articles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token,
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          category: category || null,
+          is_featured,
+          tags,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        status.textContent = "";
+        return alert(data.detail || "发布失败");
+      }
+
+      status.textContent = "发布成功，跳转中...";
+      window.location.href = `/guides/${data.id}`;
+    });
+  });
+</script>
+{% endblock %}
