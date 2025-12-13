@@ -32,10 +32,29 @@ def list_cards(
     search: Optional[str] = Query(
         None, description="模糊搜索卡牌名"
     ),
+    sort_by: Optional[str] = Query(
+        "mana", description="排序字段：class|win|mana|score"
+    ),
+    sort_order: str = Query(
+        "asc", regex="^(asc|desc)$", description="排序方向"
+    ),
     page: int = Query(1, ge=1),
     page_size: int = Query(30, ge=1, le=200),
 ):
-    query = db.query(Card)
+    # 均分子查询：给“按评分”排序用
+    avg_sub = (
+        db.query(
+            CardReview.card_id.label("cid"),
+            func.avg(CardReview.score).label("avg_score"),
+        )
+        .group_by(CardReview.card_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(Card, avg_sub.c.avg_score.label("avg_score"))
+        .outerjoin(avg_sub, Card.id == avg_sub.c.cid)
+    )
 
     if version:
         query = query.filter(Card.version == version)
@@ -52,29 +71,41 @@ def list_cards(
         like = f"%{search}%"
         query = query.filter(Card.name.ilike(like))
 
-    # 注意：SQL Server 不支持 NULLS LAST，这里不要加 .nullslast()
-    query = query.order_by(Card.mana_cost.asc(), Card.name.asc())
+    # 注意：SQL Server 不支持 NULLS LAST，这里用 case 把 NULL 排在后面
+    def direction(expr):
+        return expr.asc() if sort_order.lower() == "asc" else expr.desc()
 
-    cards = (
+    def nulls_last(expr):
+        return case((expr.is_(None), 1), else_=0)
+
+    if sort_by == "class":
+        query = query.order_by(direction(Card.card_class), Card.mana_cost.asc(), Card.name.asc())
+    elif sort_by == "win":
+        query = query.order_by(nulls_last(Card.arena_score), direction(Card.arena_score), Card.name.asc())
+    elif sort_by == "score":
+        query = query.order_by(nulls_last(avg_sub.c.avg_score), direction(avg_sub.c.avg_score), Card.name.asc())
+    else:  # 默认按水晶排序
+        query = query.order_by(direction(Card.mana_cost), Card.name.asc())
+
+    rows = (
         query.offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
 
+    cards = []
+    avg_map: dict[int, float | None] = {}
+    for row in rows:
+        card, avg_score = row
+        cards.append(card)
+        if avg_score is not None:
+            avg_map[card.id] = float(avg_score)
+
     # 补充点评均分（避免 SQL Server DISTINCT/文本问题，这里单独查均分）
     card_ids = [c.id for c in cards]
-    avg_map = {}
     top_map = {}
 
     if card_ids:
-        avg_rows = (
-            db.query(CardReview.card_id, func.avg(CardReview.score))
-            .filter(CardReview.card_id.in_(card_ids))
-            .group_by(CardReview.card_id)
-            .all()
-        )
-        avg_map = {cid: float(avg or 0) for cid, avg in avg_rows}
-
         # 取影响力最高的点评（若影响力为空，则排在后面），用于列表页展示点评人和短评
         influence_null_last = case((UserProfile.influence.is_(None), 1), else_=0)
         top_reviews = (

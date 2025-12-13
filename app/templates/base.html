@@ -39,9 +39,6 @@
           <div class="qk-user-menu" aria-label="用户菜单">
             <a href="/profile">个人资料</a>
             <a href="/members/{{ current_user.id }}">我的主页</a>
-            {% if current_user.role.value in ['member','elite_member','admin'] %}
-            <a href="/profile">编辑成员资料</a>
-            {% endif %}
             {% if current_user.role.value in ['elite_member','admin'] %}
             <a href="/guides/new">发布攻略</a>
             {% endif %}

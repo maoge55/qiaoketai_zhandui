@@ -12,14 +12,28 @@
 <form id="homepage-form" style="display:grid; gap: 14px; max-width: 820px;">
   <label class="qk-field">
     <span class="qk-label">队标 URL</span>
-    <input class="qk-input" id="hp-team-logo" placeholder="/static/img/logo.png" />
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input class="qk-input" id="hp-team-logo" placeholder="/static/img/logo.png" style="flex:1; min-width:260px;" />
+      <input type="file" id="hp-team-logo-file" accept="image/*" />
+      <button class="qk-btn qk-btn-outline" type="button" id="btn-upload-logo">上传</button>
+    </div>
+    <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <img id="hp-logo-preview" src="" alt="Logo 预览" style="max-height:60px; display:none; border-radius:8px;" />
+      <span class="meta">上传后会覆盖上次文件，保存前可预览</span>
+    </div>
   </label>
 
   <label class="qk-field">
     <span class="qk-label">Banner 图片地址（多条请用换行分隔）</span>
+    <div id="hp-banner-drop" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:8px; padding:8px; border:1px dashed var(--border-color); border-radius:10px;">
+      <input type="file" id="hp-banner-file" accept="image/*" multiple />
+      <button class="qk-btn qk-btn-outline" type="button" id="btn-upload-banner">上传并添加到列表（可多选/拖拽/粘贴）</button>
+      <span class="meta">支持拖拽、粘贴或多选上传；最多展示前 5 张</span>
+    </div>
     <textarea class="qk-textarea" id="hp-banner" rows="6" placeholder='例如：
 /static/image/banner1.png
 https://example.com/banner2.jpg'></textarea>
+    <div id="hp-banner-preview-list" style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;"></div>
   </label>
 
   <label class="qk-field">
@@ -69,6 +83,7 @@ async function loadHomepage() {
   document.getElementById("hp-banner").value = Array.isArray(data.banner_images) ? data.banner_images.join("\n") : "";
   document.getElementById("hp-ach").value = Array.isArray(data.featured_achievements) ? data.featured_achievements.join("\n") : "";
   document.getElementById("hp-mem").value = Array.isArray(data.featured_members) ? data.featured_members.join("\n") : "";
+  renderBannerPreview(Array.isArray(data.banner_images) ? data.banner_images : []);
   status.textContent = "已加载";
 }
 
@@ -95,9 +110,96 @@ async function saveHomepage() {
   status.textContent = "保存成功";
 }
 
+async function uploadLogo() {
+  const fileInput = document.getElementById("hp-team-logo-file");
+  if (!fileInput.files || !fileInput.files[0]) return alert("请选择要上传的图片");
+  const fd = new FormData();
+  fd.append("file", fileInput.files[0]);
+  const res = await adminFetch("/api/admin/homepage/upload/logo", {
+    method: "POST",
+    body: fd,
+  });
+  const data = await res.json();
+  if (!res.ok) return alert(data.detail || "上传失败");
+  document.getElementById("hp-team-logo").value = data.url;
+  const preview = document.getElementById("hp-logo-preview");
+  preview.src = data.url;
+  preview.style.display = "block";
+}
+
+async function uploadBanner() {
+  const fileInput = document.getElementById("hp-banner-file");
+  const files = fileInput.files ? Array.from(fileInput.files) : [];
+  if (!files.length) return alert("请选择要上传的图片");
+  await uploadBannerFiles(files);
+}
+
+async function uploadBannerFiles(files) {
+  const fd = new FormData();
+  files.forEach((f) => fd.append("files", f));
+  const res = await adminFetch("/api/admin/homepage/upload/banner", {
+    method: "POST",
+    body: fd,
+  });
+  const data = await res.json();
+  if (!res.ok) return alert(data.detail || "上传失败");
+  const urls = Array.isArray(data.urls) ? data.urls : [];
+  if (!urls.length) return;
+
+  // append to textarea
+  const textarea = document.getElementById("hp-banner");
+  const lines = toLines(textarea.value);
+  for (const url of urls) {
+    if (!lines.includes(url)) lines.unshift(url);
+  }
+  textarea.value = lines.join("\n");
+  renderBannerPreview(lines);
+}
+
+function renderBannerPreview(urls) {
+  const list = document.getElementById("hp-banner-preview-list");
+  if (!list) return;
+  list.innerHTML = "";
+  (urls || []).slice(0, 5).forEach((u) => {
+    const img = document.createElement("img");
+    img.src = u;
+    img.style.maxHeight = "80px";
+    img.style.borderRadius = "10px";
+    img.style.border = "1px solid var(--border-color)";
+    list.appendChild(img);
+  });
+}
+
+function setupBannerDropAndPaste() {
+  const dropZone = document.getElementById("hp-banner-drop");
+  if (!dropZone) return;
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = "var(--primary)";
+  });
+  dropZone.addEventListener("dragleave", () => {
+    dropZone.style.borderColor = "var(--border-color)";
+  });
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = "var(--border-color)";
+    const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
+    if (files.length) uploadBannerFiles(files);
+  });
+
+  document.addEventListener("paste", (e) => {
+    const files = Array.from(e.clipboardData.files || []).filter((f) => f.type.startsWith("image/"));
+    if (files.length) uploadBannerFiles(files);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-load-homepage")?.addEventListener("click", loadHomepage);
   document.getElementById("btn-save-homepage")?.addEventListener("click", saveHomepage);
+  document.getElementById("btn-upload-logo")?.addEventListener("click", uploadLogo);
+  document.getElementById("btn-upload-banner")?.addEventListener("click", uploadBanner);
+  setupBannerDropAndPaste();
   loadHomepage();
 });
 </script>

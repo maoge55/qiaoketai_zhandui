@@ -264,11 +264,16 @@ a {
 .banner-slide {
   position: absolute;
   inset: 0;
-  background-size: cover;
-  background-position: center;
   opacity: 0;
   transition: opacity 0.6s ease;
   cursor: pointer;
+}
+
+.banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
 }
 
 .banner-slide.active {
@@ -1682,6 +1687,106 @@ body:has(#members-grid) .qk-container {
   background: rgba(250, 204, 21, 0.22);
   border: 1px solid rgba(250, 204, 21, 0.9);
   color: #facc15;
+}
+
+/* ===== 荣耀殿堂样式 ===== */
+.legend-heading {
+  margin-bottom: 12px;
+  letter-spacing: 0.04em;
+}
+
+.legend-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.legend-timeline .timeline-item {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(8, 47, 73, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+}
+
+.legend-date {
+  color: #fbbf24;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.legend-title {
+  margin: 6px 0 4px;
+  color: #fef3c7;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
+}
+
+.legend-meta {
+  color: #93c5fd;
+}
+
+.legend-desc {
+  color: #e0f2fe;
+  opacity: 0.92;
+  line-height: 1.55;
+}
+
+/* ===== 成员详情页样式 ===== */
+.member-detail-page {
+  position: relative;
+  padding: 20px 0 32px;
+  border-radius: 20px;
+  background-image: url('/static/image/DetailVack.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.member-detail-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(0,0,0,0.35), rgba(5,8,22,0.75));
+  pointer-events: none;
+}
+
+.member-detail-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: 18px;
+}
+
+.member-info-card {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+}
+
+.member-info-card .info-box p {
+  margin: 4px 0;
+  color: #cbd5e1;
+}
+
+.member-info-card h1 {
+  margin: 0 0 6px;
+}
+
+.member-hero-photo {
+  border-radius: 18px;
+  min-height: 340px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 36px rgba(0,0,0,0.55);
+}
+
+.member-detail .card {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
 }
 
 /* hover 时再轻微上浮一点点，叠加动画，更有“金边卡牌”的感觉 */

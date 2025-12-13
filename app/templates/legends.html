@@ -2,21 +2,21 @@
 {% block title %}荣耀殿堂 - 敲可爱战队{% endblock %}
 {% block content %}
 <div class="qk-container">
-  <h1>荣耀殿堂</h1>
-  <div class="qk-timeline">
+  <h1 class="legend-heading">荣耀殿堂</h1>
+  <div class="qk-timeline legend-timeline">
     {% for a in achievements %}
     <div class="timeline-item">
-      <div class="time">
+      <div class="time legend-date">
         {{ a.achieved_at.strftime('%Y-%m-%d') if a.achieved_at else '未知时间' }}
       </div>
       <div class="content">
-        <h3>{{ a.title }}</h3>
-        <p class="meta">
+        <h3 class="legend-title">{{ a.title }}</h3>
+        <p class="meta legend-meta">
           {{ a.member.nickname if a.member else '未知成员' }} ·
           {{ a.season_or_version or '' }} ·
           {{ a.rank_or_result or '' }}
         </p>
-        <p>{{ a.description or '' }}</p>
+        <p class="legend-desc">{{ a.description or '' }}</p>
       </div>
     </div>
     {% else %}

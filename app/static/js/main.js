@@ -657,12 +657,15 @@ async function initCardsPage() {
   const classSelect = document.getElementById("class-filter");
   const raritySelect = document.getElementById("rarity-filter");
   const searchInput = document.getElementById("card-search");
+  const sortSelect = document.getElementById("cards-sort-by");
+  const sortOrderBtn = document.getElementById("cards-sort-order");
   const loadMoreBtn = document.getElementById("cards-load-more");
 
   let page = 1;
   const pageSize = 40;
   let loading = false;
   let hasMore = true;
+    let sortOrder = (sortOrderBtn && sortOrderBtn.dataset.order) || "asc";
 
   // 只有“战队成员及以上”才显示点评按钮（后端接口仍会校验权限）
   const roleCookie = decodeURIComponent(getCookie("user_role") || "");
@@ -676,6 +679,8 @@ async function initCardsPage() {
       cardClass: classSelect ? classSelect.value : "",
       rarity: raritySelect ? raritySelect.value : "",
       search: searchInput ? searchInput.value.trim() : "",
+      sortBy: sortSelect ? sortSelect.value : "mana",
+      sortOrder: sortOrder,
     };
   }
 
@@ -849,7 +854,7 @@ async function initCardsPage() {
       cardsGrid.innerHTML = "";
     }
 
-    const { expansion, cardClass, rarity, search } = getFilters();
+    const { expansion, cardClass, rarity, search, sortBy, sortOrder } = getFilters();
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("page_size", String(pageSize));
@@ -857,6 +862,8 @@ async function initCardsPage() {
     if (cardClass) params.append("card_class", cardClass);
     if (rarity) params.append("rarity", rarity);
     if (search) params.append("search", search);
+    if (sortBy) params.append("sort_by", sortBy);
+    if (sortOrder) params.append("sort_order", sortOrder);
 
     try {
       const res = await fetch(`/api/cards?${params.toString()}`);
@@ -900,6 +907,20 @@ async function initCardsPage() {
   }
   if (raritySelect) {
     raritySelect.addEventListener("change", () => loadCards(true));
+  }
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => loadCards(true));
+  }
+  if (sortOrderBtn) {
+    sortOrderBtn.addEventListener("click", () => {
+      sortOrder = sortOrder === "asc" ? "desc" : "asc";
+      sortOrderBtn.dataset.order = sortOrder;
+      const arrow = sortOrderBtn.querySelector(".order-arrow");
+      const text = sortOrderBtn.querySelector(".order-text");
+      if (arrow) arrow.textContent = sortOrder === "asc" ? "\u2191" : "\u2193";
+      if (text) text.textContent = sortOrder === "asc" ? "正序" : "倒序";
+      loadCards(true);
+    });
   }
   if (searchInput) {
     let timer = null;

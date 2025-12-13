@@ -41,6 +41,20 @@
           <option value="传说">传说</option>
         </select>
       </div>
+
+      <label class="cards-label">排序：</label>
+      <div class="select-wrapper">
+        <select id="cards-sort-by" class="cards-select">
+          <option value="class">按职业</option>
+          <option value="win">按胜率</option>
+          <option value="mana" selected>按水晶</option>
+          <option value="score">按评分</option>
+        </select>
+      </div>
+      <button id="cards-sort-order" type="button" class="btn-secondary cards-sort-order" data-order="asc">
+        <span class="order-text">正序</span>
+        <span class="order-arrow" aria-hidden="true">&uarr;</span>
+      </button>
     </div>
 
     <div class="cards-toolbar-right">

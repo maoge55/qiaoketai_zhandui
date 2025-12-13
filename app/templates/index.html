@@ -183,7 +183,8 @@
   let timer = null;
 
   track.innerHTML = banners.map((b, i) => `
-    <div class="banner-slide${i===0?' active':''}" data-idx="${i}" data-activity-id="${b.activityId || ''}" style="background-image:url('${b.url}')">
+    <div class="banner-slide${i===0?' active':''}" data-idx="${i}" data-activity-id="${b.activityId || ''}">
+      <img class="banner-image" src="${b.url}" alt="banner-${i}" />
       <div class="banner-mask"></div>
     </div>
   `).join('');

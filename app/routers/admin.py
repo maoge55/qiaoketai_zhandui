@@ -1,6 +1,8 @@
 from typing import List, Optional
+from pathlib import Path
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -22,6 +24,13 @@ from app.schemas import (
     AchievementAdminCreate,
     AchievementAdminUpdate,
 )
+
+# Static upload targets for homepage assets
+BASE_DIR = Path(__file__).resolve().parent.parent
+HOMEPAGE_UPLOAD_DIR = BASE_DIR / "static" / "uploads" / "homepage"
+HOMEPAGE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+HOMEPAGE_LOGO_PATH = HOMEPAGE_UPLOAD_DIR / "team_logo.png"
+HOMEPAGE_BANNER_PATH = HOMEPAGE_UPLOAD_DIR / "banner.png"
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -63,6 +72,15 @@ def _achievement_to_dict(a: Achievement, user: Optional[User] = None):
         "status": a.status.value if hasattr(a, "status") else None,
         "is_pinned": bool(getattr(a, "is_pinned", False)),
     }
+
+
+def _validate_image(file: UploadFile, max_size: int = 5 * 1024 * 1024) -> bytes:
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="仅支持图片上传")
+    data = file.file.read()
+    if len(data) > max_size:
+        raise HTTPException(status_code=400, detail="图片不能超过 5MB")
+    return data
 
 
 @router.get("/users")
@@ -453,3 +471,36 @@ def admin_update_homepage(
     db.commit()
     db.refresh(config)
     return _normalize_homepage_config(config)
+
+
+@router.post("/homepage/upload/logo")
+def admin_upload_homepage_logo(
+    file: UploadFile = File(...),
+    _: User = Depends(require_admin),
+):
+    data = _validate_image(file)
+    HOMEPAGE_LOGO_PATH.write_bytes(data)
+    return {"url": f"/static/uploads/homepage/{HOMEPAGE_LOGO_PATH.name}"}
+
+
+@router.post("/homepage/upload/banner")
+def admin_upload_homepage_banner(
+    files: List[UploadFile] = File(...),
+    _: User = Depends(require_admin),
+):
+    if not files:
+        raise HTTPException(status_code=400, detail="未选择图片")
+
+    urls: list[str] = []
+    for f in files:
+        data = _validate_image(f)
+        ext = ".png"
+        if f.filename and "." in f.filename:
+            ext = f.filename.rsplit(".", 1)[-1].lower()
+            ext = "." + ext
+        filename = f"banner_{uuid4().hex}{ext}"
+        path = HOMEPAGE_UPLOAD_DIR / filename
+        path.write_bytes(data)
+        urls.append(f"/static/uploads/homepage/{filename}")
+
+    return {"urls": urls}
