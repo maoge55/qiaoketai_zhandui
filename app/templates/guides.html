@@ -1,21 +1,40 @@
 {% extends "base.html" %}
-{% block title %}竞技场宝典 - 敲可爱战队{% endblock %}
+
+{% block title %}竞技场宝典 - 攻略列表{% endblock %}
+
 {% block content %}
-<div class="qk-container">
-  <h1>竞技场宝典</h1>
-  <div class="article-list">
-    {% for a in articles %}
-    <article class="card article-card">
-      <h2><a href="/guides/{{ a.id }}">{{ a.title }}</a></h2>
-      <p class="meta">
-        作者：{{ a.author.nickname if a.author else '未知' }} ·
-        {{ a.created_at.strftime('%Y-%m-%d') }}
-      </p>
-      <p>{{ a.content[:150] }}{% if a.content|length > 150 %}...{% endif %}</p>
-    </article>
-    {% else %}
-    <p>还没有任何攻略，快去写一篇吧！</p>
-    {% endfor %}
+<div class="qk-container guides-page">
+  <div class="card guides-toolbar">
+    <div class="guides-toolbar-left">
+      <input id="guide-search" class="qk-input" placeholder="搜索标题/正文关键词..." />
+      <input id="guide-category" class="qk-input" placeholder="分类（可选）" />
+      <input id="guide-tag" class="qk-input" placeholder="标签（可选）" />
+      <button id="btn-guide-filter" class="qk-btn qk-btn-primary" type="button">筛选</button>
+      <button id="btn-guide-reset" class="qk-btn qk-btn-outline" type="button">重置</button>
+    </div>
+
+    <div class="guides-toolbar-right">
+      {% if current_user and current_user.role.value in ['elite_member','admin'] %}
+      <a href="/guides/new" class="qk-btn qk-btn-primary">发布攻略</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="guides-list" class="guides-list"></div>
+
+  <div class="guides-pagination">
+    <button id="guides-prev" class="qk-btn qk-btn-outline" type="button">上一页</button>
+    <span id="guides-page-info" class="meta"></span>
+    <button id="guides-next" class="qk-btn qk-btn-outline" type="button">下一页</button>
   </div>
 </div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  // 仅用于前端判定权限显示（后端接口仍会校验权限）
+  window.QK_GUIDES_CTX = {
+    currentUser: {% if current_user %}{{ {'id': current_user.id, 'role': current_user.role.value} | tojson }}{% else %}null{% endif %}
+  };
+</script>
 {% endblock %}

@@ -33,6 +33,20 @@ function getCookie(name) {
   return "";
 }
 
+// 防止 XSS：把用户输入当作纯文本渲染
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function nl2br(text) {
+  return escapeHtml(text).replace(/\n/g, "<br>");
+}
+
 // 退出登录
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-logout") {
@@ -186,7 +200,9 @@ document.addEventListener("click", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) return alert(data.detail || "评论失败");
-    location.reload();
+    // 不刷新页面，直接重载评论区
+    document.getElementById("comment-content").value = "";
+    loadComments();
   }
 });
 
@@ -205,6 +221,8 @@ function buildMemberCard(profile) {
     typeof profile.age === "number" ? profile.age : "-";
   const gender = profile.gender || "-";
   const tags = profile.other_tags || "竞技场爱好者";
+  const bioRaw = (profile.bio || "").trim();
+  const bioText = bioRaw || "这个人还没有写简介～";
   const influence =
     typeof profile.influence === "number" ? profile.influence : 1;
   const rank =
@@ -225,7 +243,7 @@ function buildMemberCard(profile) {
       <!-- 中间：基本信息 -->
       <div class="member-card-info">
         <div class="member-card-top">
-          <h3 class="member-card-name">${nickname}</h3>
+          <h3 class="member-card-name">${escapeHtml(nickname)}</h3>
           ${
             rank
               ? `<span class="member-card-rank">当前赛季第 ${rank} 名</span>`
@@ -235,7 +253,8 @@ function buildMemberCard(profile) {
         <p class="member-card-meta">
           年龄：${age} ｜ 性别：${gender}
         </p>
-        <p class="member-card-tags">${tags}</p>
+        <p class="member-card-tags">${escapeHtml(tags)}</p>
+        <p class="member-card-bio">${escapeHtml(bioText)}</p>
       </div>
 
       <!-- 右侧：影响力等信息 -->
@@ -316,6 +335,166 @@ function initMembersPage() {
 }
 
 
+// ===== 攻略列表：筛选 + 分页 UI（异步加载） =====
+function initGuidesPage() {
+  const listEl = document.getElementById("guides-list");
+  if (!listEl) return; // 不在攻略列表页
+
+  const searchInput = document.getElementById("guide-search");
+  const categoryInput = document.getElementById("guide-category");
+  const tagInput = document.getElementById("guide-tag");
+  const btnFilter = document.getElementById("btn-guide-filter");
+  const btnReset = document.getElementById("btn-guide-reset");
+  const btnPrev = document.getElementById("guides-prev");
+  const btnNext = document.getElementById("guides-next");
+  const pageInfo = document.getElementById("guides-page-info");
+
+  let page = 1;
+  const pageSize = 10;
+  let total = 0;
+
+  function readUrlState() {
+    const url = new URL(window.location.href);
+    const p = Number(url.searchParams.get("page") || "1");
+    page = Number.isFinite(p) && p > 0 ? p : 1;
+    const s = url.searchParams.get("search") || "";
+    const c = url.searchParams.get("category") || "";
+    const t = url.searchParams.get("tag") || "";
+    if (searchInput) searchInput.value = s;
+    if (categoryInput) categoryInput.value = c;
+    if (tagInput) tagInput.value = t;
+  }
+
+  function writeUrlState() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", String(page));
+    if (searchInput && searchInput.value.trim()) url.searchParams.set("search", searchInput.value.trim());
+    else url.searchParams.delete("search");
+    if (categoryInput && categoryInput.value.trim()) url.searchParams.set("category", categoryInput.value.trim());
+    else url.searchParams.delete("category");
+    if (tagInput && tagInput.value.trim()) url.searchParams.set("tag", tagInput.value.trim());
+    else url.searchParams.delete("tag");
+    window.history.replaceState({}, "", url.toString());
+  }
+
+  function render(items) {
+    listEl.innerHTML = "";
+    if (!items || items.length === 0) {
+      listEl.innerHTML = `<div class="card"><p class="meta">没有找到符合条件的攻略～</p></div>`;
+      return;
+    }
+
+    items.forEach((a) => {
+      const tags = Array.isArray(a.tags) ? a.tags : [];
+      const tagHtml = tags
+        .map((t) => `<button type="button" class="guide-tag-chip" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</button>`)
+        .join(" ");
+
+      const created = a.created_at ? new Date(a.created_at).toLocaleDateString() : "";
+
+      const card = document.createElement("div");
+      card.className = "card guide-card";
+      card.innerHTML = `
+        <div class="guide-card-head">
+          <a class="guide-title" href="/guides/${a.id}">${escapeHtml(a.title)}</a>
+          <div class="meta">作者：${escapeHtml(a.author_nickname || "未知")} · ${created}</div>
+        </div>
+        <div class="guide-excerpt">${escapeHtml(a.excerpt || "")}</div>
+        ${tagHtml ? `<div class="guide-tags">${tagHtml}</div>` : ""}
+      `;
+      listEl.appendChild(card);
+    });
+  }
+
+  function updatePager() {
+    const pages = Math.max(1, Math.ceil((total || 0) / pageSize));
+    if (pageInfo) pageInfo.textContent = `第 ${page} / ${pages} 页 · 共 ${total} 篇`;
+    if (btnPrev) btnPrev.disabled = page <= 1;
+    if (btnNext) btnNext.disabled = page >= pages;
+  }
+
+  async function load() {
+    writeUrlState();
+    listEl.innerHTML = `<div class="card"><p class="meta">加载中...</p></div>`;
+
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("page_size", String(pageSize));
+    const s = searchInput ? searchInput.value.trim() : "";
+    const c = categoryInput ? categoryInput.value.trim() : "";
+    const t = tagInput ? tagInput.value.trim() : "";
+    if (s) params.set("search", s);
+    if (c) params.set("category", c);
+    if (t) params.set("tag", t);
+
+    const res = await fetch(`/api/articles/paged?${params.toString()}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      listEl.innerHTML = `<div class="card"><p class="meta">加载失败：${escapeHtml(data.detail || "请稍后再试")}</p></div>`;
+      return;
+    }
+    total = data.total || 0;
+    render(data.items || []);
+    updatePager();
+  }
+
+  // 初始
+  readUrlState();
+  load();
+
+  // 操作
+  if (btnFilter) {
+    btnFilter.addEventListener("click", () => {
+      page = 1;
+      load();
+    });
+  }
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      if (searchInput) searchInput.value = "";
+      if (categoryInput) categoryInput.value = "";
+      if (tagInput) tagInput.value = "";
+      page = 1;
+      load();
+    });
+  }
+
+  [searchInput, categoryInput, tagInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        page = 1;
+        load();
+      }
+    });
+  });
+
+  if (btnPrev) {
+    btnPrev.addEventListener("click", () => {
+      if (page > 1) page -= 1;
+      load();
+    });
+  }
+  if (btnNext) {
+    btnNext.addEventListener("click", () => {
+      page += 1;
+      load();
+    });
+  }
+
+  // 点击 tag chip 直接筛选
+  listEl.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".guide-tag-chip");
+    if (!btn) return;
+    const t = btn.dataset.tag || "";
+    if (tagInput) tagInput.value = t;
+    page = 1;
+    load();
+  });
+}
+
+
 // 加载文章评论
 async function loadComments() {
   if (!window.QK_CURRENT_ARTICLE_ID) return;
@@ -326,7 +505,26 @@ async function loadComments() {
   const container = document.getElementById("comments-list");
   if (!Array.isArray(data) || !container) return;
 
-  // 简单楼中楼（一级 + 回复缩进）
+  const ctx = window.QK_COMMENT_CTX || {};
+  const currentUser = ctx.currentUser || null;
+  const articleAuthorId = ctx.articleAuthorId || null;
+
+  function canDelete(c) {
+    if (!currentUser) return false;
+    return (
+      currentUser.role === "admin" ||
+      currentUser.id === c.user_id ||
+      (articleAuthorId && currentUser.id === articleAuthorId)
+    );
+  }
+
+  function canPin(c) {
+    if (!currentUser) return false;
+    if (c.parent_id) return false; // 仅一级评论可置顶
+    return currentUser.role === "admin" || (articleAuthorId && currentUser.id === articleAuthorId);
+  }
+
+  // 楼中楼（一级 + 回复缩进）
   const byParent = {};
   data.forEach((c) => {
     const pid = c.parent_id || 0;
@@ -334,18 +532,46 @@ async function loadComments() {
     byParent[pid].push(c);
   });
 
+  // 回复按时间排序（一级评论顺序使用后端排序：置顶优先）
+  Object.keys(byParent).forEach((pid) => {
+    if (pid !== "0") {
+      byParent[pid].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    }
+  });
+
   function renderList(parentId, indent) {
     (byParent[parentId] || []).forEach((c) => {
       const div = document.createElement("div");
       div.className = "comment-item";
       div.style.marginLeft = indent + "px";
+
+      const pinnedBadge = c.is_pinned && !c.parent_id ? `<span class="comment-pin-badge">置顶</span>` : "";
+
+      const actions = [];
+      actions.push(
+        `<button class="qk-btn qk-btn-outline btn-reply" data-id="${c.id}">回复</button>`
+      );
+      if (canDelete(c)) {
+        actions.push(
+          `<button class="qk-btn qk-btn-outline btn-comment-delete" data-id="${c.id}">删除</button>`
+        );
+      }
+      if (canPin(c)) {
+        actions.push(
+          `<button class="qk-btn qk-btn-outline btn-comment-pin" data-id="${c.id}" data-next="${c.is_pinned ? 0 : 1}">${c.is_pinned ? "取消置顶" : "置顶"}</button>`
+        );
+      }
+
       div.innerHTML = `
         <div class="meta">
-          <span>${c.user_nickname}</span>
+          ${pinnedBadge}
+          <span>${escapeHtml(c.user_nickname)}</span>
           <span>${new Date(c.created_at).toLocaleString()}</span>
         </div>
-        <div class="content">${c.content}</div>
-        <button class="qk-btn qk-btn-outline btn-reply" data-id="${c.id}">回复</button>
+        <div class="content">${nl2br(c.content)}</div>
+        <div class="comment-actions">${actions.join(" ")}</div>
       `;
       container.appendChild(div);
       renderList(c.id, indent + 20);
@@ -356,6 +582,7 @@ async function loadComments() {
 }
 
 document.addEventListener("click", async (e) => {
+  // 回复
   if (e.target.classList.contains("btn-reply")) {
     const parentId = e.target.dataset.id;
     const content = prompt("请输入回复内容：");
@@ -373,7 +600,48 @@ document.addEventListener("click", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) return alert(data.detail || "回复失败");
-    location.reload();
+    loadComments();
+    return;
+  }
+
+  // 删除评论
+  if (e.target.classList.contains("btn-comment-delete")) {
+    const id = e.target.dataset.id;
+    if (!confirm("确定要删除这条评论吗？（会同时删除其回复）")) return;
+    const token = getToken();
+    if (!token) return (window.location.href = "/login");
+
+    const res = await fetch(`/api/comments/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.detail || "删除失败");
+    loadComments();
+    return;
+  }
+
+  // 置顶/取消置顶
+  if (e.target.classList.contains("btn-comment-pin")) {
+    const id = e.target.dataset.id;
+    const next = Number(e.target.dataset.next || "1") === 1;
+    const token = getToken();
+    if (!token) return (window.location.href = "/login");
+
+    const res = await fetch(`/api/comments/${id}/pin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ pinned: next }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.detail || "操作失败");
+    loadComments();
+    return;
   }
 });
 
@@ -392,6 +660,10 @@ async function initCardsPage() {
   const pageSize = 40;
   let loading = false;
   let hasMore = true;
+
+  // 只有“战队成员及以上”才显示点评按钮（后端接口仍会校验权限）
+  const roleCookie = decodeURIComponent(getCookie("user_role") || "");
+  const canReview = ["member", "elite_member", "admin"].includes(roleCookie);
 
   // ---------- 工具函数 ----------
 
@@ -463,20 +735,20 @@ async function initCardsPage() {
     }
 
     // 短评（列表页只展示一部分）
-    const fullReview = (card.short_review || "").trim();
-    let shortReview = fullReview;
+    const fullReviewRaw = (card.short_review || "").trim();
+    let shortReviewText = fullReviewRaw;
 
     const MAX_REVIEW_LEN = 40;
-    if (shortReview.length > MAX_REVIEW_LEN) {
-      shortReview = shortReview.slice(0, MAX_REVIEW_LEN) + "…";
+    if (shortReviewText.length > MAX_REVIEW_LEN) {
+      shortReviewText = shortReviewText.slice(0, MAX_REVIEW_LEN) + "…";
     }
-    if (!shortReview) {
-      shortReview = `<span class="card-review-empty">暂无短评</span>`;
-    }
+    const shortReview = shortReviewText
+      ? escapeHtml(shortReviewText)
+      : `<span class="card-review-empty">暂无短评</span>`;
 
     // 点评人
     const reviewerName =
-      card.reviewer_name || card.reviewer || null;
+      card.reviewer_nickname || card.reviewer_name || card.reviewer || null;
     const reviewerText = reviewerName
       ? `点评人：${reviewerName}`
       : "点评人：暂时无人点评";
@@ -503,12 +775,18 @@ async function initCardsPage() {
         break;
     }
 
+    const imgSrc = card.pic || "/static/image/Sylv.png";
+    const nameSafe = escapeHtml(card.name || "");
+    const reviewBtn = canReview
+      ? `<a class="qk-btn qk-btn-outline card-review-btn" href="/cards/${card.id}#write-review" title="写点评">点评</a>`
+      : "";
+
     return `
       <div class="card card-small card-eval" data-card-id="${card.id}">
         <div class="card-image-wrap">
           <img
-            src="${card.pic || "/static/images/card-placeholder.png"}"
-            alt="${card.name || ""}"
+            src="${imgSrc}"
+            alt="${nameSafe}"
             class="card-art"
             loading="lazy"
           />
@@ -520,7 +798,10 @@ async function initCardsPage() {
           <p class="card-score ${scoreClass}">竞技场评分：${scoreText}</p>
           <p class="card-winrate">${winrateText}</p>
           <p class="card-review">${shortReview}</p>
-          <p class="card-reviewer">${reviewerText}</p>
+          <div class="card-eval-footer">
+            <span class="card-reviewer">${escapeHtml(reviewerText)}</span>
+            ${reviewBtn}
+          </div>
         </div>
       </div>
     `;
@@ -629,6 +910,8 @@ async function initCardsPage() {
 
   // 点击卡牌跳详情
   cardsGrid.addEventListener("click", (e) => {
+    // 点击“点评”按钮时，不劫持跳转（让 a 标签自己带 hash 跳转）
+    if (e.target.closest(".card-review-btn")) return;
     const cardEl = e.target.closest(".card-eval");
     if (!cardEl) return;
     const id = cardEl.dataset.cardId;
@@ -649,46 +932,90 @@ async function initCardDetailPage() {
   const chkHighScore = document.getElementById("filter-high-score");
   const chkLatestVersion = document.getElementById("filter-latest-version");
 
+  // 写点评表单（只有符合权限的用户才会渲染这些 DOM）
+  const myScoreEl = document.getElementById("my-review-score");
+  const myContentEl = document.getElementById("my-review-content");
+  const myVersionEl = document.getElementById("my-review-version");
+  const mySubmitBtn = document.getElementById("btn-submit-my-review");
+  const myStatusEl = document.getElementById("my-review-status");
+
   let page = 1;
   const pageSize = 10;
   let total = 0;
   let loading = false;
 
+  async function loadMyReview() {
+    if (!myScoreEl || !myContentEl || !mySubmitBtn) return;
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`/api/v1/cards/${cardId}/reviews/me`, {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (res.status === 404) {
+        if (myStatusEl) myStatusEl.textContent = "你还没有点评过这张卡";
+        return;
+      }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        if (myStatusEl) myStatusEl.textContent = "";
+        return;
+      }
+      const d = await res.json().catch(() => ({}));
+      if (d && d.id) {
+        myScoreEl.value = d.score ?? "";
+        myContentEl.value = d.content ?? "";
+        if (myVersionEl) myVersionEl.value = d.game_version ?? "";
+        if (myStatusEl) myStatusEl.textContent = "已加载你的历史点评（再次提交会覆盖更新）";
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   function renderReviewItem(r) {
     const date = new Date(r.created_at);
     const timeStr = date.toLocaleString("zh-CN");
+
+    const reviewerName = r?.reviewer?.name ? String(r.reviewer.name) : "匿名";
+    const reviewerInitial = reviewerName.trim().charAt(0) || "玩";
 
     const score = r.score ?? 0;
     let scoreClass = "score-mid";
     if (score < 4) scoreClass = "score-low";
     else if (score > 7) scoreClass = "score-high";
 
-    const expertBadge = r.reviewer.is_expert
+    const expertBadge = r.reviewer && r.reviewer.is_expert
       ? `<span class="badge badge-expert">专家</span>`
       : "";
 
     const version = r.game_version ? ` · 版本 ${r.game_version}` : "";
 
+    const scoreText = Number(score);
+    const scoreShow = Number.isNaN(scoreText) ? "0.0" : scoreText.toFixed(1);
+    const contentSafe = escapeHtml(r.content || "").replace(/\n/g, "<br>");
+
     return `
       <article class="card-review-item">
         <header class="review-header">
           <div class="reviewer-info">
-            <div class="avatar-placeholder">${r.reviewer.name[0] || "玩"}</div>
+            <div class="avatar-placeholder">${escapeHtml(reviewerInitial)}</div>
             <div>
               <div class="reviewer-name">
-                ${r.reviewer.name}
+                ${escapeHtml(reviewerName)}
                 ${expertBadge}
               </div>
               <div class="review-meta">${timeStr}${version}</div>
             </div>
           </div>
           <div class="review-score ${scoreClass}">
-            <span class="score-number">${score}</span>
+            <span class="score-number">${scoreShow}</span>
             <span class="score-unit">分</span>
           </div>
         </header>
         <div class="review-body">
-          <p class="review-content collapsed">${r.content}</p>
+          <p class="review-content collapsed">${contentSafe}</p>
           <button class="review-toggle" type="button">展开</button>
         </div>
       </article>
@@ -754,6 +1081,61 @@ async function initCardDetailPage() {
     loading = false;
   }
 
+  // 提交 / 更新我的点评
+  if (mySubmitBtn) {
+    mySubmitBtn.addEventListener("click", async () => {
+      const token = getToken();
+      if (!token) {
+        alert("请先登录再点评");
+        window.location.href = "/login";
+        return;
+      }
+
+      const score = Number(myScoreEl.value);
+      if (Number.isNaN(score) || score < 0 || score > 10) {
+        alert("评分请输入 0~10 之间的数字（支持 0.5 步进）");
+        return;
+      }
+
+      const content = (myContentEl.value || "").trim();
+      if (!content) {
+        alert("请填写短评内容");
+        return;
+      }
+      if (content.length > 200) {
+        alert("短评最多 200 字，请精简一下～");
+        return;
+      }
+
+      const payload = {
+        score: score,
+        content: content,
+        game_version: myVersionEl ? (myVersionEl.value || "").trim() || null : null,
+      };
+
+      if (myStatusEl) myStatusEl.textContent = "提交中...";
+
+      const res = await fetch(`/api/v1/cards/${cardId}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (myStatusEl) myStatusEl.textContent = "";
+        alert(data.detail || "提交失败");
+        return;
+      }
+
+      if (myStatusEl) myStatusEl.textContent = "已保存 ✔";
+      // 刷新列表 + 均分
+      await loadReviews(true);
+    });
+  }
+
   // 事件绑定
   btnMore.addEventListener("click", () => {
     loadReviews(false);
@@ -775,11 +1157,13 @@ async function initCardDetailPage() {
 
   // 首次加载
   await loadReviews(true);
+  await loadMyReview();
 }
 
 // 简单全局初始化
 document.addEventListener("DOMContentLoaded", () => {
   loadComments();
+  initGuidesPage();
   initCardsPage();
   initCardDetailPage && initCardDetailPage();
   initMembersPage(); // ✅ 战队名册页面初始化

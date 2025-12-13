@@ -1,11 +1,28 @@
 {% extends "admin_base.html" %}
+
 {% block admin_content %}
 <h1 style="margin-top:0;">成员管理</h1>
-<p class="meta">修改用户角色；以及（可选）编辑成员影响力/当前赛季排名。</p>
+<p class="meta">异步分页加载：修改用户角色；以及（可选）编辑成员影响力 / 当前赛季排名。</p>
 
-<div style="display:flex; gap:10px; align-items:center; margin: 12px 0 18px;">
-  <button class="qk-btn qk-btn-primary" id="btn-reload-users">刷新列表</button>
-  <span class="meta" id="admin-users-status"></span>
+<div class="card" style="padding: 12px; margin: 12px 0 18px;">
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+    <input id="admin-member-search" class="qk-input" style="min-width: 220px;" placeholder="搜索用户名 / 昵称 / 邮箱..." />
+    <select id="admin-member-page-size" class="qk-input" style="max-width: 120px;">
+      <option value="10">10/页</option>
+      <option value="20" selected>20/页</option>
+      <option value="50">50/页</option>
+    </select>
+    <button class="qk-btn qk-btn-primary" id="btn-admin-member-search" type="button">查询</button>
+    <button class="qk-btn qk-btn-outline" id="btn-admin-member-reset" type="button">重置</button>
+
+    <span class="meta" id="admin-users-status"></span>
+  </div>
+
+  <div style="display:flex; gap:10px; align-items:center; justify-content:center; margin-top: 12px;">
+    <button class="qk-btn qk-btn-outline" id="admin-member-prev" type="button">上一页</button>
+    <span class="meta" id="admin-member-page-info"></span>
+    <button class="qk-btn qk-btn-outline" id="admin-member-next" type="button">下一页</button>
+  </div>
 </div>
 
 <div style="overflow:auto;">
@@ -38,55 +55,134 @@ async function adminFetch(url, options = {}) {
   return fetch(url, options);
 }
 
-async function loadAdminUsers() {
-  const status = document.getElementById("admin-users-status");
-  const tbody = document.getElementById("admin-users-tbody");
-  status.textContent = "加载中...";
-  tbody.innerHTML = "";
-
-  const res = await adminFetch("/api/admin/users");
-  const data = await res.json();
-  if (!res.ok) {
-    status.textContent = "";
-    return alert(data.detail || "加载失败");
-  }
-
-  for (const u of data) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">#${u.id}</td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${u.username}</td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);"><a href="/members/${u.id}" target="_blank">${u.nickname}</a></td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${u.email}</td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
-        <select class="admin-user-role qk-input" data-id="${u.id}" style="max-width: 160px;">
-          <option value="visitor">visitor</option>
-          <option value="user">user</option>
-          <option value="member">member</option>
-          <option value="elite_member">elite_member</option>
-          <option value="admin">admin</option>
-        </select>
-      </td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
-        <input class="admin-user-influence qk-input" data-id="${u.id}" type="number" style="max-width: 120px;" value="${u.influence ?? ''}" placeholder="(空)" />
-      </td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
-        <input class="admin-user-rank qk-input" data-id="${u.id}" type="number" style="max-width: 120px;" value="${u.current_season_rank ?? ''}" placeholder="(空)" />
-      </td>
-      <td style="padding:10px; border-bottom: 1px solid var(--border-color); display:flex; gap:8px; align-items:center;">
-        <button class="qk-btn qk-btn-outline admin-user-save" data-id="${u.id}">保存</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-    tr.querySelector("select").value = u.role;
-  }
-
-  status.textContent = `共 ${data.length} 人`;
+function esc(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("btn-reload-users")?.addEventListener("click", loadAdminUsers);
+  const status = document.getElementById("admin-users-status");
+  const tbody = document.getElementById("admin-users-tbody");
+  const inpSearch = document.getElementById("admin-member-search");
+  const selSize = document.getElementById("admin-member-page-size");
+  const btnSearch = document.getElementById("btn-admin-member-search");
+  const btnReset = document.getElementById("btn-admin-member-reset");
+  const btnPrev = document.getElementById("admin-member-prev");
+  const btnNext = document.getElementById("admin-member-next");
+  const pageInfo = document.getElementById("admin-member-page-info");
 
+  let page = 1;
+  let pageSize = Number(selSize.value || "20");
+  let total = 0;
+  let loading = false;
+
+  function updatePager() {
+    const pages = Math.max(1, Math.ceil((total || 0) / pageSize));
+    pageInfo.textContent = `第 ${page} / ${pages} 页 · 共 ${total} 人`;
+    btnPrev.disabled = page <= 1;
+    btnNext.disabled = page >= pages;
+  }
+
+  function render(items) {
+    tbody.innerHTML = "";
+    if (!items || items.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="8" style="padding: 14px;" class="meta">没有数据</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    for (const u of items) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);">#${u.id}</td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${esc(u.username)}</td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);"><a href="/members/${u.id}" target="_blank">${esc(u.nickname)}</a></td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);">${esc(u.email)}</td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+          <select class="admin-user-role qk-input" data-id="${u.id}" style="max-width: 160px;">
+            <option value="visitor">visitor</option>
+            <option value="user">user</option>
+            <option value="member">member</option>
+            <option value="elite_member">elite_member</option>
+            <option value="admin">admin</option>
+          </select>
+        </td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+          <input class="admin-user-influence qk-input" data-id="${u.id}" type="number" style="max-width: 120px;" value="${u.influence ?? ''}" placeholder="(空)" />
+        </td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color);">
+          <input class="admin-user-rank qk-input" data-id="${u.id}" type="number" style="max-width: 120px;" value="${u.current_season_rank ?? ''}" placeholder="(空)" />
+        </td>
+        <td style="padding:10px; border-bottom: 1px solid var(--border-color); display:flex; gap:8px; align-items:center;">
+          <button class="qk-btn qk-btn-outline admin-user-save" data-id="${u.id}" type="button">保存</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+      tr.querySelector("select").value = u.role;
+    }
+  }
+
+  async function load() {
+    if (loading) return;
+    loading = true;
+    status.textContent = "加载中...";
+    pageSize = Number(selSize.value || "20");
+
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("page_size", String(pageSize));
+    const s = (inpSearch.value || "").trim();
+    if (s) params.set("search", s);
+
+    const res = await adminFetch(`/api/admin/users/paged?${params.toString()}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      status.textContent = "";
+      loading = false;
+      return alert(data.detail || "加载失败");
+    }
+    total = data.total || 0;
+    render(data.items || []);
+    updatePager();
+    status.textContent = "";
+    loading = false;
+  }
+
+  btnSearch.addEventListener("click", () => {
+    page = 1;
+    load();
+  });
+  btnReset.addEventListener("click", () => {
+    inpSearch.value = "";
+    page = 1;
+    load();
+  });
+  inpSearch.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      page = 1;
+      load();
+    }
+  });
+  selSize.addEventListener("change", () => {
+    page = 1;
+    load();
+  });
+  btnPrev.addEventListener("click", () => {
+    if (page > 1) page -= 1;
+    load();
+  });
+  btnNext.addEventListener("click", () => {
+    page += 1;
+    load();
+  });
+
+  // 保存
   document.body.addEventListener("click", async (e) => {
     if (!e.target.classList.contains("admin-user-save")) return;
     const id = e.target.dataset.id;
@@ -101,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ role }),
     });
-    const d1 = await res1.json();
+    const d1 = await res1.json().catch(() => ({}));
     if (!res1.ok) return alert(d1.detail || "更新角色失败");
 
     // 2) 更新 profile（影响力/排名）
@@ -114,14 +210,14 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(payload),
     });
-    const d2 = await res2.json();
+    const d2 = await res2.json().catch(() => ({}));
     if (!res2.ok) return alert(d2.detail || "更新资料失败");
 
     alert("更新成功");
-    loadAdminUsers();
+    load();
   });
 
-  loadAdminUsers();
+  load();
 });
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -17,17 +17,93 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 @router.get("/users")
 def admin_list_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    return [
-        {
-            "id": u.id,
-            "username": u.username,
-            "nickname": u.nickname,
-            "email": u.email,
-            "role": u.role.value,
-        }
-        for u in users
-    ]
+    """兼容旧接口：返回全部用户。
+
+    同时补充 profile 的 influence/current_season_rank，方便后台成员页直接使用。
+    """
+
+    rows = (
+        db.query(User, UserProfile)
+        .outerjoin(UserProfile, UserProfile.user_id == User.id)
+        .order_by(User.id.asc())
+        .all()
+    )
+
+    result = []
+    for u, p in rows:
+        result.append(
+            {
+                "id": u.id,
+                "username": u.username,
+                "nickname": u.nickname,
+                "email": u.email,
+                "role": u.role.value,
+                "influence": p.influence if p else None,
+                "current_season_rank": p.current_season_rank if p else None,
+            }
+        )
+    return result
+
+
+@router.get("/users/paged")
+def admin_list_users_paged(
+    page: int = 1,
+    page_size: int = 25,
+    search: Optional[str] = None,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """后台成员列表分页接口（异步加载用）。"""
+
+    if page < 1:
+        page = 1
+    if page_size < 1:
+        page_size = 25
+    if page_size > 100:
+        page_size = 100
+
+    q = db.query(User).order_by(User.id.asc())
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            (User.username.ilike(like))
+            | (User.nickname.ilike(like))
+            | (User.email.ilike(like))
+        )
+
+    total = q.count()
+    users = q.offset((page - 1) * page_size).limit(page_size).all()
+
+    # profile 批量查询
+    user_ids = [u.id for u in users]
+    profiles = (
+        db.query(UserProfile)
+        .filter(UserProfile.user_id.in_(user_ids))
+        .all()
+    )
+    prof_map = {p.user_id: p for p in profiles}
+
+    items = []
+    for u in users:
+        p = prof_map.get(u.id)
+        items.append(
+            {
+                "id": u.id,
+                "username": u.username,
+                "nickname": u.nickname,
+                "email": u.email,
+                "role": u.role.value,
+                "influence": p.influence if p else None,
+                "current_season_rank": p.current_season_rank if p else None,
+            }
+        )
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.put("/users/{user_id}")

@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, require_elite_member, require_admin, get_current_user
@@ -10,7 +11,9 @@ from app.schemas import (
     ArticleUpdate,
     ArticleOut,
     ArticleListItem,
+    ArticleListResponse,
 )
+from app.utils.sanitize import sanitize_html
 
 router = APIRouter(prefix="/api/articles", tags=["articles"])
 
@@ -45,6 +48,74 @@ def list_articles(
             )
         )
     return result
+
+
+@router.get("/paged", response_model=ArticleListResponse)
+def list_articles_paged(
+    page: int = 1,
+    page_size: int = 10,
+    featured: Optional[int] = 0,
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    tag: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """攻略列表（带总数 & 筛选），用于前端分页/筛选 UI。"""
+
+    if page < 1:
+        page = 1
+    if page_size < 1:
+        page_size = 10
+    if page_size > 50:
+        page_size = 50
+
+    q = db.query(Article).filter(Article.status == ArticleStatus.PUBLISHED)
+
+    if featured:
+        q = q.filter(Article.is_featured == True)
+
+    if category:
+        q = q.filter(Article.category == category)
+
+    if search:
+        like = f"%{search}%"
+        q = q.filter(or_(Article.title.ilike(like), Article.content.ilike(like)))
+
+    if tag:
+        q = q.join(ArticleTag).filter(ArticleTag.tag_name == tag)
+
+    # total（tag join 可能产生重复，需要 distinct）
+    total = q.distinct(Article.id).count()
+
+    items = (
+        q.order_by(Article.created_at.desc())
+        .distinct(Article.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    result: List[ArticleListItem] = []
+    for a in items:
+        tags = [t.tag_name for t in a.tags]
+        excerpt = (a.content[:120] + "...") if len(a.content) > 120 else a.content
+        result.append(
+            ArticleListItem(
+                id=a.id,
+                title=a.title,
+                excerpt=excerpt,
+                author_nickname=a.author.nickname,
+                created_at=a.created_at,
+                tags=tags,
+            )
+        )
+
+    return ArticleListResponse(
+        items=result,
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
 
 
 @router.get("/{article_id}", response_model=ArticleOut)
@@ -85,9 +156,11 @@ def create_article(
     current_user: User = Depends(require_elite_member),
     db: Session = Depends(get_db),
 ):
+    safe_html = sanitize_html(payload.content)
+
     article = Article(
         title=payload.title,
-        content=payload.content,
+        content=safe_html,
         author_id=current_user.id,
         category=payload.category,
         status=ArticleStatus.PUBLISHED,
@@ -138,7 +211,7 @@ def update_article(
     if payload.title is not None:
         article.title = payload.title
     if payload.content is not None:
-        article.content = payload.content
+        article.content = sanitize_html(payload.content)
     if payload.category is not None:
         article.category = payload.category
     if payload.status is not None:

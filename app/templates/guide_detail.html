@@ -31,6 +31,11 @@
 {% block body_extra %}
 <script>
   window.QK_CURRENT_ARTICLE_ID = {{ article.id }};
+  window.QK_COMMENT_CTX = {
+    articleId: {{ article.id }},
+    articleAuthorId: {{ article.author_id }},
+    currentUser: {% if current_user %}{{ {'id': current_user.id, 'role': current_user.role.value} | tojson }}{% else %}null{% endif %}
+  };
 </script>
 {% endblock %}
 {% endblock %}

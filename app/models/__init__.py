@@ -119,6 +119,9 @@ class Comment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
     content = Column(Text, nullable=False)
+    # ✅ 新增：置顶
+    is_pinned = Column(Boolean, nullable=False, default=False)
+    pinned_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     article = relationship("Article", back_populates="comments")
@@ -164,6 +167,10 @@ class Card(Base):
         back_populates="card",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def reviewer_nickname(self):
+        return self.reviewer.nickname if self.reviewer else None
 
 
 

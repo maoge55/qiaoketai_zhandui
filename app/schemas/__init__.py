@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -135,6 +135,13 @@ class ArticleListItem(BaseModel):
         from_attributes = True
 
 
+class ArticleListResponse(BaseModel):
+    items: List[ArticleListItem]
+    page: int
+    page_size: int
+    total: int
+
+
 class CommentCreate(BaseModel):
     content: str
 
@@ -151,6 +158,7 @@ class CommentOut(BaseModel):
     parent_id: Optional[int]
     content: str
     created_at: datetime
+    is_pinned: bool = False
 
     class Config:
         from_attributes = True
@@ -168,8 +176,26 @@ class CardOut(BaseModel):
     pic: Optional[str]
     description: Optional[str]
     arena_score: Optional[int]
+    arena_win_rates: Any = None
     short_review: Optional[str]
     reviewer_nickname: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+
+class CardReviewUpsert(BaseModel):
+    score: float
+    content: str
+    game_version: Optional[str] = None
+
+
+class CardReviewMineOut(BaseModel):
+    review_id: int
+    score: float
+    content: str
+    created_at: datetime
+    game_version: Optional[str] = None
+
     class Config:
         from_attributes = True
 

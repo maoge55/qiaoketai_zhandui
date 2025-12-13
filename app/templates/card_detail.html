@@ -1,40 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}卡牌详情 - 敲可爱战队{% endblock %}
+{% block title %}{{ card.name }} - 卡牌详情{% endblock %}
 
 {% block content %}
-<div class="qk-container card-detail-page">
-  <section class="card-detail-header">
-    <h1>卡牌详情</h1>
-  </section>
+<div class="qk-container card-detail-page" data-card-id="{{ card.id }}">
+  <div class="card-detail-layout">
 
-  <section class="card-detail-body">
-    <div class="card-detail-left">
-      <div class="card-image-wrapper big">
+    <!-- 左侧：卡牌信息 + 写点评 -->
+    <aside class="card-detail-info">
+      <div class="card-art-wrapper">
         <img
-          src="{{ card.pic or 'https://via.placeholder.com/256x384?text=No+Image' }}"
+          src="{{ card.pic or '/static/image/Sylv.png' }}"
           alt="{{ card.name }}"
-          class="card-image"
-          onerror="this.onerror=null;this.src='https://via.placeholder.com/256x384?text=No+Image';"
+          class="card-art"
+          loading="lazy"
+          onerror="this.onerror=null;this.src='/static/image/Sylv.png';"
         />
       </div>
-      <div class="card-basic-info">
-        <h2 class="card-name">{{ card.name }}</h2>
-        <p class="meta">
-          {{ card.card_class }} · {{ card.rarity }} · 法力值：{{ card.mana_cost }}
-        </p>
-        <p class="score">
-          竞技场评分：
-          {% if card.arena_score is not none %}
-            {{ card.arena_score }}
-          {% else %}
-            ？
-          {% endif %}
-        </p>
-      </div>
-    </div>
 
-    <div class="card-detail-right">
+      <div class="card-meta-panel">
+        <h1 class="card-name">{{ card.name }}</h1>
+        <div class="card-meta-line">
+          <span class="badge">{{ card.card_class }}</span>
+          <span class="badge badge-rare">{{ card.rarity }}</span>
+          <span class="badge">法力值 {{ card.mana_cost }}</span>
+          {% if card.version %}
+          <span class="badge">版本 {{ card.version }}</span>
+          {% endif %}
+        </div>
+
+        <div class="card-score-block">
+          <div class="score-label">综合点评均分</div>
+          <div class="card-avg-score score-mid">
+            <span class="score-number">—</span>
+            <span class="score-unit">分</span>
+          </div>
+          <div class="meta" style="margin-top:6px;">
+            竞技场评分：{% if card.arena_score is not none %}{{ card.arena_score }}{% else %}？{% endif %}
+          </div>
+        </div>
+      </div>
+
       <div class="card-section">
         <h3>卡牌描述</h3>
         <p class="description">
@@ -46,23 +52,83 @@
         </p>
       </div>
 
+      <div class="card-section" id="write-review">
+        <h3>写点评（短评 + 评分）</h3>
+        {% if current_user and current_user.role.value in ['member','elite_member','admin'] %}
+        <div style="display:grid; gap: 10px;">
+          <label class="qk-field">
+            <span class="qk-label">评分（0~10）</span>
+            <input id="my-review-score" class="qk-input" type="number" min="0" max="10" step="0.5" placeholder="例如：7.5" />
+          </label>
 
-      <div class="card-section">
-        <h3>一句话短评</h3>
-        <p>
-          {{ card.short_review or '暂无短评' }}
-        </p>
-        {% if card.reviewer_nickname %}
-        <p class="reviewer">点评人：{{ card.reviewer_nickname }}</p>
+          <label class="qk-field">
+            <span class="qk-label">短评（最多 200 字）</span>
+            <textarea id="my-review-content" class="qk-textarea" rows="4" placeholder="这张卡在竞技场的定位 / 选取优先级 / 配合思路..."></textarea>
+          </label>
+
+          <label class="qk-field">
+            <span class="qk-label">游戏版本（可选）</span>
+            <input id="my-review-version" class="qk-input" placeholder="例如：29.2" />
+          </label>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+            <button class="qk-btn qk-btn-primary" id="btn-submit-my-review" type="button">提交点评</button>
+            <span class="meta" id="my-review-status"></span>
+          </div>
+
+          <small class="meta">
+            提示：同一人重复提交会自动覆盖更新。每张卡最多 5 位成员点评。
+          </small>
+        </div>
+        {% elif current_user %}
+          <p class="meta">你的身份暂不支持写点评（需要战队成员及以上）。</p>
+        {% else %}
+          <p class="meta">登录后才能写点评哦～ <a href="/login">点击登录</a></p>
         {% endif %}
       </div>
 
-      {# 这里预留一个“职业胜率”区域，后面可以接 arena_win_rates 的可视化 #}
-      {# <div class="card-section">
-        <h3>各职业竞技场胜率</h3>
-        ...
-      </div> #}
-    </div>
-  </section>
+    </aside>
+
+    <!-- 右侧：点评列表 -->
+    <section class="card-detail-reviews">
+      <div class="reviews-header">
+        <h2 style="margin:0;">点评区</h2>
+        <div class="reviews-filters">
+          <select id="review-sort">
+            <option value="time_desc" selected>最新</option>
+            <option value="time_asc">最早</option>
+            <option value="score_desc">高分优先</option>
+            <option value="score_asc">低分优先</option>
+          </select>
+
+          <label class="filter-item">
+            <input type="checkbox" id="filter-high-score" />
+            只看高分(≥7)
+          </label>
+
+          <label class="filter-item">
+            <input type="checkbox" id="filter-latest-version" />
+            只看最新版本
+          </label>
+        </div>
+      </div>
+
+      <div id="card-review-list" class="review-list"></div>
+
+      <div class="reviews-footer">
+        <button class="qk-btn qk-btn-outline" id="btn-review-load-more" type="button">加载更多</button>
+      </div>
+    </section>
+
+  </div>
 </div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  window.QK_CARD_DETAIL = {
+    cardId: {{ card.id }},
+    currentUser: {% if current_user %}{{ {'id': current_user.id, 'role': current_user.role.value} | tojson }}{% else %}null{% endif %}
+  };
+</script>
 {% endblock %}
