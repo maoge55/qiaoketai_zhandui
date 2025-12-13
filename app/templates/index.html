@@ -98,7 +98,7 @@
           作者：{{ a.author.nickname if a.author else '未知' }} ·
           {{ a.created_at.strftime('%Y-%m-%d') }}
         </p>
-        <p>{{ a.content[:100] }}{% if a.content|length > 100 %}...{% endif %}</p>
+        <div class="article-excerpt">{{ (a.content[:160])|safe }}{% if a.content|length > 160 %}...{% endif %}</div>
       </article>
       {% else %}
       <p>暂无精选文章，快让大神们写几篇吧～</p>

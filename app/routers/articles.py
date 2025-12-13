@@ -84,16 +84,27 @@ def list_articles_paged(
     if tag:
         q = q.join(ArticleTag).filter(ArticleTag.tag_name == tag)
 
-    # total（tag join 可能产生重复，需要 distinct）
-    total = q.distinct(Article.id).count()
+    # total（SQL Server 不支持对 text 列做 DISTINCT；先只取 id 再计数）
+    id_query = q.with_entities(Article.id).distinct()
+    total = id_query.count()
 
-    items = (
-        q.order_by(Article.created_at.desc())
-        .distinct(Article.id)
+    # 先分页拿到去重的 id，再查实体，避免 DISTINCT 选到 text 列
+    id_rows = (
+        id_query.order_by(Article.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
+    ids = [r[0] for r in id_rows]
+
+    items = []
+    if ids:
+        items = (
+            db.query(Article)
+            .filter(Article.id.in_(ids))
+            .order_by(Article.created_at.desc())
+            .all()
+        )
 
     result: List[ArticleListItem] = []
     for a in items:

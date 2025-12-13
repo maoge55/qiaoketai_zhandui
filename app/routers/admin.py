@@ -168,6 +168,7 @@ def admin_list_articles(
             "author": a.author.nickname,
             "status": a.status.value,
             "created_at": a.created_at,
+            "is_featured": bool(a.is_featured),
         }
         for a in articles
     ]
@@ -186,6 +187,8 @@ def admin_update_article(
     status_val = payload.get("status")
     if status_val:
         article.status = ArticleStatus(status_val)
+    if "is_featured" in payload:
+        article.is_featured = bool(payload.get("is_featured"))
     db.commit()
     return {"message": "更新成功"}
 

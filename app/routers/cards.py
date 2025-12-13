@@ -2,11 +2,11 @@ from typing import List, Optional
 import re
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import distinct
+from sqlalchemy import distinct, func, case
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db
-from app.models import Card
+from app.models import Card, CardReview, User, UserProfile
 from app.schemas import CardOut
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
@@ -60,7 +60,73 @@ def list_cards(
         .limit(page_size)
         .all()
     )
-    return cards
+
+    # 补充点评均分（避免 SQL Server DISTINCT/文本问题，这里单独查均分）
+    card_ids = [c.id for c in cards]
+    avg_map = {}
+    top_map = {}
+
+    if card_ids:
+        avg_rows = (
+            db.query(CardReview.card_id, func.avg(CardReview.score))
+            .filter(CardReview.card_id.in_(card_ids))
+            .group_by(CardReview.card_id)
+            .all()
+        )
+        avg_map = {cid: float(avg or 0) for cid, avg in avg_rows}
+
+        # 取影响力最高的点评（若影响力为空，则排在后面），用于列表页展示点评人和短评
+        influence_null_last = case((UserProfile.influence.is_(None), 1), else_=0)
+        top_reviews = (
+            db.query(
+                CardReview.card_id,
+                CardReview.content,
+                User.nickname.label("nick"),
+                User.username.label("uname"),
+                UserProfile.influence,
+                CardReview.created_at,
+            )
+            .join(User, User.id == CardReview.reviewer_id)
+            .outerjoin(UserProfile, UserProfile.user_id == User.id)
+            .filter(CardReview.card_id.in_(card_ids))
+            .order_by(influence_null_last, UserProfile.influence.desc(), CardReview.created_at.desc())
+            .all()
+        )
+
+        seen = set()
+        for cid, content, nick, uname, _, _ in top_reviews:
+            if cid in seen:
+                continue
+            seen.add(cid)
+            top_map[cid] = {
+                "content": content,
+                "reviewer": nick or uname or "",
+            }
+
+    # 构造响应模型，避免给 ORM property 赋值
+    result: list[CardOut] = []
+    for c in cards:
+        top = top_map.get(c.id)
+        result.append(
+            CardOut(
+                id=c.id,
+                name=c.name,
+                expansion=c.expansion,
+                mana_cost=c.mana_cost,
+                card_class=c.card_class,
+                rarity=c.rarity,
+                version=c.version,
+                pic=c.pic,
+                description=c.description,
+                arena_score=c.arena_score,
+                arena_win_rates=c.arena_win_rates,
+                short_review=top["content"] if top else c.short_review,
+                reviewer_nickname=top["reviewer"] if top else (c.reviewer.nickname if c.reviewer else None),
+                average_score=avg_map.get(c.id),
+            )
+        )
+
+    return result
 
 @router.get("/expansions", response_model=List[str])
 def list_versions(db: Session = Depends(get_db)):

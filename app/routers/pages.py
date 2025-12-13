@@ -84,39 +84,6 @@ async def guides_page(
     )
 
 
-@router.get("/guides/{article_id}", response_class=HTMLResponse)
-async def guide_detail_page(
-    article_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user_from_cookie),
-):
-    article = (
-        db.query(Article)
-        .filter(
-            Article.id == article_id, Article.status != ArticleStatus.DELETED
-        )
-        .first()
-    )
-    if not article:
-        return templates.TemplateResponse(
-            "error_403.html",
-            {
-                "request": request,
-                "message": "文章不存在",
-                "current_user": current_user,
-            },
-        )
-    return templates.TemplateResponse(
-        "guide_detail.html",
-        {
-            "request": request,
-            "current_user": current_user,
-            "article": article,
-        },
-    )
-
-
 @router.get("/cards", response_class=HTMLResponse)
 async def cards_page(
     request: Request,
@@ -293,6 +260,40 @@ async def new_guide_page(
     return templates.TemplateResponse(
         "guide_new.html",
         {"request": request, "current_user": current_user},
+    )
+
+
+@router.get("/guides/{article_id}", response_class=HTMLResponse)
+async def guide_detail_page(
+    article_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_from_cookie),
+):
+    """Detail page must come after /guides/new to avoid path param capturing 'new'."""
+    article = (
+        db.query(Article)
+        .filter(
+            Article.id == article_id, Article.status != ArticleStatus.DELETED
+        )
+        .first()
+    )
+    if not article:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "文章不存在",
+                "current_user": current_user,
+            },
+        )
+    return templates.TemplateResponse(
+        "guide_detail.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "article": article,
+        },
     )
 
 

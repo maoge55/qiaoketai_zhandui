@@ -399,9 +399,12 @@ function initGuidesPage() {
           <a class="guide-title" href="/guides/${a.id}">${escapeHtml(a.title)}</a>
           <div class="meta">作者：${escapeHtml(a.author_nickname || "未知")} · ${created}</div>
         </div>
-        <div class="guide-excerpt">${escapeHtml(a.excerpt || "")}</div>
+        <div class="guide-excerpt"></div>
         ${tagHtml ? `<div class="guide-tags">${tagHtml}</div>` : ""}
       `;
+      const excerptEl = card.querySelector(".guide-excerpt");
+      // 后端已对内容做 sanitize，这里直接渲染 HTML 以保留格式。
+      excerptEl.innerHTML = a.excerpt || "";
       listEl.appendChild(card);
     });
   }
@@ -677,25 +680,26 @@ async function initCardsPage() {
   }
 
   function buildCardHtml(card, selectedClass) {
-    // 评分
+    // 评分：优先用点评均分，其次用单卡 arena_score，统一 0-5 量表
     let scoreText = "？";
     let scoreClass = "score-neutral";
 
-    if (card.arena_score !== null && card.arena_score !== undefined) {
-      const n = Number(card.arena_score);
-      if (!Number.isNaN(n)) {
-        scoreText = n.toFixed(1);
+    const pickedScore =
+      card.average_score != null
+        ? Number(card.average_score)
+        : card.arena_score != null
+          ? Number(card.arena_score)
+          : null;
 
-        if (n >= 4.5) {
-          // 顶级卡
-          scoreClass = "score-epic";
-        } else if (n >= 3) {
-          // 还不错
-          scoreClass = "score-good";
-        } else {
-          // 较差
-          scoreClass = "score-bad";
-        }
+    if (pickedScore !== null && !Number.isNaN(pickedScore)) {
+      scoreText = pickedScore.toFixed(1);
+
+      if (pickedScore >= 4.5) {
+        scoreClass = "score-epic"; // 顶级
+      } else if (pickedScore >= 3) {
+        scoreClass = "score-good"; // 还不错
+      } else {
+        scoreClass = "score-bad";  // 较差
       }
     }
 
@@ -795,7 +799,7 @@ async function initCardsPage() {
           <p class="card-meta">
             ${cardClass} · <span class="${rarityClass}">${rarity || "免费"}</span>
           </p>
-          <p class="card-score ${scoreClass}">竞技场评分：${scoreText}</p>
+          <p class="card-score ${scoreClass}">评分：${scoreText}</p>
           <p class="card-winrate">${winrateText}</p>
           <p class="card-review">${shortReview}</p>
           <div class="card-eval-footer">
@@ -983,8 +987,8 @@ async function initCardDetailPage() {
 
     const score = r.score ?? 0;
     let scoreClass = "score-mid";
-    if (score < 4) scoreClass = "score-low";
-    else if (score > 7) scoreClass = "score-high";
+    if (score < 3) scoreClass = "score-low";
+    else if (score > 4) scoreClass = "score-high";
 
     const expertBadge = r.reviewer && r.reviewer.is_expert
       ? `<span class="badge badge-expert">专家</span>`
@@ -1032,8 +1036,8 @@ async function initCardDetailPage() {
     scoreWrap.classList.remove("score-low", "score-mid", "score-high");
     let cls = "score-mid";
     if (avg != null) {
-      if (avg < 4) cls = "score-low";
-      else if (avg > 7) cls = "score-high";
+      if (avg < 3) cls = "score-low";
+      else if (avg > 4) cls = "score-high";
     }
     scoreWrap.classList.add(cls);
   }
@@ -1051,7 +1055,7 @@ async function initCardDetailPage() {
     params.set("page", String(page));
     params.set("page_size", String(pageSize));
     params.set("sort", selSort.value || "time_desc");
-    if (chkHighScore.checked) params.set("min_score", "7");
+    if (chkHighScore.checked) params.set("min_score", "4");
     if (chkLatestVersion.checked) params.set("latest_version_only", "true");
 
     const res = await fetch(`/api/v1/cards/${cardId}/reviews?` + params.toString());
@@ -1092,8 +1096,8 @@ async function initCardDetailPage() {
       }
 
       const score = Number(myScoreEl.value);
-      if (Number.isNaN(score) || score < 0 || score > 10) {
-        alert("评分请输入 0~10 之间的数字（支持 0.5 步进）");
+      if (Number.isNaN(score) || score < 0 || score > 5) {
+        alert("评分请输入 0~5 之间的数字（支持 0.5 步进）");
         return;
       }
 

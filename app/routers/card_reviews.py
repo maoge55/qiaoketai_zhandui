@@ -74,9 +74,9 @@ def upsert_review(
     if len(content) > 200:
         raise HTTPException(status_code=400, detail="短评最多 200 字")
 
-    # 分数简单限制：0-10
-    if payload.score < 0 or payload.score > 10:
-        raise HTTPException(status_code=400, detail="评分范围为 0~10")
+    # 分数简单限制：0-5（0.5 步进，前端校验但后端也要兜底）
+    if payload.score < 0 or payload.score > 5:
+        raise HTTPException(status_code=400, detail="评分范围为 0~5")
 
     existing = (
         db.query(CardReview)

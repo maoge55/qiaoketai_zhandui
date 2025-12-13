@@ -179,6 +179,7 @@ class CardOut(BaseModel):
     arena_win_rates: Any = None
     short_review: Optional[str]
     reviewer_nickname: Optional[str] = None
+    average_score: float | None = None
     class Config:
         from_attributes = True
 

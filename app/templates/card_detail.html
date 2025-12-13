@@ -35,9 +35,6 @@
             <span class="score-number">—</span>
             <span class="score-unit">分</span>
           </div>
-          <div class="meta" style="margin-top:6px;">
-            竞技场评分：{% if card.arena_score is not none %}{{ card.arena_score }}{% else %}？{% endif %}
-          </div>
         </div>
       </div>
 
@@ -57,8 +54,8 @@
         {% if current_user and current_user.role.value in ['member','elite_member','admin'] %}
         <div style="display:grid; gap: 10px;">
           <label class="qk-field">
-            <span class="qk-label">评分（0~10）</span>
-            <input id="my-review-score" class="qk-input" type="number" min="0" max="10" step="0.5" placeholder="例如：7.5" />
+            <span class="qk-label">评分（0~5）</span>
+            <input id="my-review-score" class="qk-input" type="number" min="0" max="5" step="0.5" placeholder="例如：4.5" />
           </label>
 
           <label class="qk-field">
@@ -103,7 +100,7 @@
 
           <label class="filter-item">
             <input type="checkbox" id="filter-high-score" />
-            只看高分(≥7)
+            只看高分(≥4)
           </label>
 
           <label class="filter-item">

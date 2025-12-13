@@ -1102,6 +1102,25 @@ select.qk-input {
   margin-top: 14px;
 }
 
+.guide-title {
+  font-weight: 700;
+  font-size: 1.08rem;
+  color: #fbbf24;
+  text-decoration: none;
+}
+
+.guide-title:hover,
+.guide-title:focus {
+  color: #fcd34d;
+  text-decoration: underline;
+}
+
+.guide-excerpt {
+  color: #e5e7eb;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+
 .guide-card h3 {
   margin: 0 0 6px;
   font-size: 1.15rem;
