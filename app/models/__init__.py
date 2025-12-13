@@ -174,6 +174,12 @@ class Card(Base):
 
 
 
+class AchievementStatus(str, Enum):
+    ACTIVE = "active"          # 展示在前台
+    ARCHIVED = "archived"      # 下架但保留数据
+    DELETED = "deleted"        # 逻辑删除
+
+
 class Achievement(Base):
     __tablename__ = "achievements"
 
@@ -184,6 +190,12 @@ class Achievement(Base):
     season_or_version = Column(String(100), nullable=True)
     rank_or_result = Column(String(100), nullable=True)
     achieved_at = Column(DateTime, nullable=True)
+    status = Column(
+        SAEnum(AchievementStatus),
+        nullable=False,
+        default=AchievementStatus.ACTIVE,
+    )
+    is_pinned = Column(Boolean, nullable=False, default=False)
 
     member = relationship("User", back_populates="achievements")
 

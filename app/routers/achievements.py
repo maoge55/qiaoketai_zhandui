@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db
-from app.models import Achievement
+from app.models import Achievement, AchievementStatus
 from app.schemas import AchievementOut
 
 router = APIRouter(prefix="/api", tags=["achievements"])
@@ -18,14 +18,14 @@ def list_achievements(
     to_date: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Achievement)
+    query = db.query(Achievement).filter(Achievement.status == AchievementStatus.ACTIVE)
     if member_id:
         query = query.filter(Achievement.member_id == member_id)
     if from_date:
         query = query.filter(Achievement.achieved_at >= from_date)
     if to_date:
         query = query.filter(Achievement.achieved_at <= to_date)
-    query = query.order_by(Achievement.achieved_at.desc())
+    query = query.order_by(Achievement.is_pinned.desc(), Achievement.achieved_at.desc())
 
     achievements = query.all()
     return [
@@ -38,6 +38,8 @@ def list_achievements(
             season_or_version=a.season_or_version,
             rank_or_result=a.rank_or_result,
             achieved_at=a.achieved_at,
+            status=a.status,
+            is_pinned=bool(a.is_pinned),
         )
         for a in achievements
     ]
@@ -48,7 +50,8 @@ def featured_achievements(db: Session = Depends(get_db)):
     # 简单做法：取最新的 6 条
     achievements = (
         db.query(Achievement)
-        .order_by(Achievement.achieved_at.desc())
+        .filter(Achievement.status == AchievementStatus.ACTIVE)
+        .order_by(Achievement.is_pinned.desc(), Achievement.achieved_at.desc())
         .limit(6)
         .all()
     )
@@ -62,6 +65,8 @@ def featured_achievements(db: Session = Depends(get_db)):
             season_or_version=a.season_or_version,
             rank_or_result=a.rank_or_result,
             achieved_at=a.achieved_at,
+            status=a.status,
+            is_pinned=bool(a.is_pinned),
         )
         for a in achievements
     ]

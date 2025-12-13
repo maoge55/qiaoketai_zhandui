@@ -1,18 +1,68 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, require_admin
-from app.models import User, Article, HomepageConfig, UserRole, ArticleStatus, UserProfile
+from app.models import (
+    User,
+    Article,
+    HomepageConfig,
+    UserRole,
+    ArticleStatus,
+    UserProfile,
+    Achievement,
+    AchievementStatus,
+)
 from app.schemas import (
     HomepageConfigUpdate,
     HomepageConfigOut,
     UserProfileAdminUpdate,
+    AchievementAdminCreate,
+    AchievementAdminUpdate,
 )
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+def _normalize_homepage_config(config: HomepageConfig) -> HomepageConfig:
+    """Ensure JSON fields are always lists to satisfy schema and frontend expectations."""
+
+    def to_list(val):
+        if val is None:
+            return []
+        if isinstance(val, list):
+            return val
+        if isinstance(val, dict):
+            return list(val.values())
+        if isinstance(val, (str, int, float, bool)):
+            return [val]
+        return []
+
+    config.banner_images = to_list(config.banner_images)
+    config.featured_achievements = to_list(config.featured_achievements)
+    config.featured_members = to_list(config.featured_members)
+    return config
+
+
+def _achievement_to_dict(a: Achievement, user: Optional[User] = None):
+    """Serialize achievement with member info for admin responses."""
+
+    return {
+        "id": a.id,
+        "member_id": a.member_id,
+        "member_nickname": (user.nickname if user else None),
+        "member_email": (user.email if user else None),
+        "title": a.title,
+        "description": a.description,
+        "season_or_version": a.season_or_version,
+        "rank_or_result": a.rank_or_result,
+        "achieved_at": a.achieved_at,
+        "status": a.status.value if hasattr(a, "status") else None,
+        "is_pinned": bool(getattr(a, "is_pinned", False)),
+    }
 
 
 @router.get("/users")
@@ -207,6 +257,161 @@ def admin_delete_article(
     return {"message": "删除成功"}
 
 
+@router.get("/achievements")
+def admin_list_achievements(
+    page: int = 1,
+    page_size: int = 20,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """分页列出成就。默认排除 deleted；支持标题/成员昵称/邮箱搜索。"""
+
+    if page < 1:
+        page = 1
+    if page_size < 1:
+        page_size = 20
+    if page_size > 200:
+        page_size = 200
+
+    q = db.query(Achievement, User).join(User, User.id == Achievement.member_id)
+
+    if status:
+        try:
+            q = q.filter(Achievement.status == AchievementStatus(status))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="无效的状态")
+    else:
+        q = q.filter(Achievement.status != AchievementStatus.DELETED)
+
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            or_(
+                Achievement.title.ilike(like),
+                User.nickname.ilike(like),
+                User.email.ilike(like),
+            )
+        )
+
+    total = q.count()
+    rows = (
+        q.order_by(
+            Achievement.is_pinned.desc(),
+            Achievement.achieved_at.desc(),
+            Achievement.id.desc(),
+        )
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "items": [_achievement_to_dict(a, u) for a, u in rows],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+@router.post("/achievements")
+def admin_create_achievement(
+    payload: AchievementAdminCreate,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    member = db.query(User).filter(User.id == payload.member_id).first()
+    if not member:
+        raise HTTPException(404, "成员不存在")
+
+    achievement = Achievement(
+        member_id=payload.member_id,
+        title=payload.title,
+        description=payload.description,
+        season_or_version=payload.season_or_version,
+        rank_or_result=payload.rank_or_result,
+        achieved_at=payload.achieved_at,
+        status=payload.status,
+        is_pinned=payload.is_pinned,
+    )
+    db.add(achievement)
+    db.commit()
+    db.refresh(achievement)
+    return _achievement_to_dict(achievement, member)
+
+
+@router.get("/achievements/{achievement_id}")
+def admin_get_achievement(
+    achievement_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    achievement = (
+        db.query(Achievement, User)
+        .join(User, User.id == Achievement.member_id)
+        .filter(Achievement.id == achievement_id)
+        .first()
+    )
+    if not achievement:
+        raise HTTPException(404, "成就不存在")
+    a, u = achievement
+    return _achievement_to_dict(a, u)
+
+
+@router.put("/achievements/{achievement_id}")
+def admin_update_achievement(
+    achievement_id: int,
+    payload: AchievementAdminUpdate,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    achievement = db.query(Achievement).filter(Achievement.id == achievement_id).first()
+    if not achievement:
+        raise HTTPException(404, "成就不存在")
+
+    if payload.member_id is not None:
+        member = db.query(User).filter(User.id == payload.member_id).first()
+        if not member:
+            raise HTTPException(404, "成员不存在")
+        achievement.member_id = payload.member_id
+
+    if payload.title is not None:
+        achievement.title = payload.title
+    if payload.description is not None:
+        achievement.description = payload.description
+    if payload.season_or_version is not None:
+        achievement.season_or_version = payload.season_or_version
+    if payload.rank_or_result is not None:
+        achievement.rank_or_result = payload.rank_or_result
+    if payload.achieved_at is not None:
+        achievement.achieved_at = payload.achieved_at
+    if payload.status is not None:
+        achievement.status = payload.status
+    if payload.is_pinned is not None:
+        achievement.is_pinned = bool(payload.is_pinned)
+
+    db.commit()
+    db.refresh(achievement)
+    user = db.query(User).filter(User.id == achievement.member_id).first()
+    return _achievement_to_dict(achievement, user)
+
+
+@router.delete("/achievements/{achievement_id}")
+def admin_delete_achievement(
+    achievement_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    achievement = db.query(Achievement).filter(Achievement.id == achievement_id).first()
+    if not achievement:
+        raise HTTPException(404, "成就不存在")
+
+    achievement.status = AchievementStatus.DELETED
+    db.commit()
+    return {"message": "删除成功"}
+
+
 @router.get("/homepage", response_model=HomepageConfigOut)
 def admin_get_homepage(
     _: User = Depends(require_admin), db: Session = Depends(get_db)
@@ -216,13 +421,13 @@ def admin_get_homepage(
         config = HomepageConfig(
             team_logo_url="/static/img/logo.png",
             banner_images=[],
-            featured_achievements={},
-            featured_members={},
+            featured_achievements=[],
+            featured_members=[],
         )
         db.add(config)
         db.commit()
         db.refresh(config)
-    return config
+    return _normalize_homepage_config(config)
 
 
 @router.put("/homepage", response_model=HomepageConfigOut)
@@ -247,4 +452,4 @@ def admin_update_homepage(
 
     db.commit()
     db.refresh(config)
-    return config
+    return _normalize_homepage_config(config)

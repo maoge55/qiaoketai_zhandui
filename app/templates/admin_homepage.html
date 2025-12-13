@@ -1,7 +1,7 @@
 {% extends "admin_base.html" %}
 {% block admin_content %}
 <h1 style="margin-top:0;">首页配置</h1>
-<p class="meta">这里编辑的是 HomepageConfig（主要给未来首页装修用）。当前首页展示更多依赖「精选文章 / 精选成就 / 高分大神」查询逻辑。</p>
+<p class="meta">这里编辑的是 HomepageConfig。为了简化，全部用中文描述，直接填网址或文本，后台自动保存。</p>
 
 <div style="display:flex; gap:10px; align-items:center; margin: 12px 0 18px;">
   <button class="qk-btn qk-btn-primary" id="btn-load-homepage">加载配置</button>
@@ -16,18 +16,24 @@
   </label>
 
   <label class="qk-field">
-    <span class="qk-label">banner_images（JSON 数组/对象）</span>
-    <textarea class="qk-textarea" id="hp-banner" rows="6" placeholder='例如：["/static/image/Sylv.png"] 或 {"a": "..."}'></textarea>
+    <span class="qk-label">Banner 图片地址（多条请用换行分隔）</span>
+    <textarea class="qk-textarea" id="hp-banner" rows="6" placeholder='例如：
+/static/image/banner1.png
+https://example.com/banner2.jpg'></textarea>
   </label>
 
   <label class="qk-field">
-    <span class="qk-label">featured_achievements（JSON）</span>
-    <textarea class="qk-textarea" id="hp-ach" rows="6" placeholder='例如：{"title":"..."}'></textarea>
+    <span class="qk-label">精选成就文案（多条换行）</span>
+    <textarea class="qk-textarea" id="hp-ach" rows="6" placeholder='例如：
+毛哥：本周登顶
+小明：均场 8 胜'></textarea>
   </label>
 
   <label class="qk-field">
-    <span class="qk-label">featured_members（JSON）</span>
-    <textarea class="qk-textarea" id="hp-mem" rows="6" placeholder='例如：{"ids":[1,2,3]}'></textarea>
+    <span class="qk-label">精选成员（填 QQ 号或用户名，多条换行）</span>
+    <textarea class="qk-textarea" id="hp-mem" rows="6" placeholder='例如：
+qq123456
+昵称：毛哥'></textarea>
   </label>
 </form>
 {% endblock %}
@@ -43,10 +49,11 @@ async function adminFetch(url, options = {}) {
   return fetch(url, options);
 }
 
-function safeParseJson(text) {
-  const t = (text || "").trim();
-  if (!t) return null;
-  try { return JSON.parse(t); } catch(e) { throw new Error("JSON 解析失败：" + e.message); }
+function toLines(text) {
+  return (text || "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 async function loadHomepage() {
@@ -59,27 +66,21 @@ async function loadHomepage() {
     return alert(data.detail || "加载失败");
   }
   document.getElementById("hp-team-logo").value = data.team_logo_url || "";
-  document.getElementById("hp-banner").value = data.banner_images ? JSON.stringify(data.banner_images, null, 2) : "";
-  document.getElementById("hp-ach").value = data.featured_achievements ? JSON.stringify(data.featured_achievements, null, 2) : "";
-  document.getElementById("hp-mem").value = data.featured_members ? JSON.stringify(data.featured_members, null, 2) : "";
+  document.getElementById("hp-banner").value = Array.isArray(data.banner_images) ? data.banner_images.join("\n") : "";
+  document.getElementById("hp-ach").value = Array.isArray(data.featured_achievements) ? data.featured_achievements.join("\n") : "";
+  document.getElementById("hp-mem").value = Array.isArray(data.featured_members) ? data.featured_members.join("\n") : "";
   status.textContent = "已加载";
 }
 
 async function saveHomepage() {
   const status = document.getElementById("admin-homepage-status");
   status.textContent = "保存中...";
-  let payload = {};
-  try {
-    payload = {
-      team_logo_url: document.getElementById("hp-team-logo").value.trim() || null,
-      banner_images: safeParseJson(document.getElementById("hp-banner").value),
-      featured_achievements: safeParseJson(document.getElementById("hp-ach").value),
-      featured_members: safeParseJson(document.getElementById("hp-mem").value),
-    };
-  } catch(e) {
-    status.textContent = "";
-    return alert(e.message);
-  }
+  const payload = {
+    team_logo_url: document.getElementById("hp-team-logo").value.trim() || null,
+    banner_images: toLines(document.getElementById("hp-banner").value),
+    featured_achievements: toLines(document.getElementById("hp-ach").value),
+    featured_members: toLines(document.getElementById("hp-mem").value),
+  };
 
   const res = await adminFetch("/api/admin/homepage", {
     method: "PUT",

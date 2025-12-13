@@ -26,11 +26,12 @@
             <div class="hero-tagline">“凡人啊，你可曾见识过竞技场的真正恐怖？”</div>
           </div>
           <div class="hero-3d-back">
-            <h3>敲可爱战队情报</h3>
-            <ul>
-              <li>平均竞技场胜场 7+ 的高质量队员</li>
-              <li>多位国服 / 亚服登顶记录保持者</li>
-              <li>战队内部定期教学、实战复盘</li>
+            <div class="section-kicker">战队情报</div>
+            {% set hero_lines = (featured_achievements_text[:3] if featured_achievements_text else ['平均竞技场胜场 7+ 的高质量队员','多位国服 / 亚服登顶记录保持者','战队内部定期教学、实战复盘']) %}
+            <ul class="hero-facts">
+              {% for line in hero_lines %}
+              <li>{{ line }}</li>
+              {% endfor %}
             </ul>
           </div>
         </div>
@@ -42,7 +43,34 @@
 
 <section class="qk-section">
   <div class="qk-container">
-    <h2>敲可爱榜单 · 高分大神</h2>
+    {% if homepage_config and homepage_config.banner_images %}
+    <div class="banner-carousel" id="banner-carousel" data-banners='{{ homepage_config.banner_images | tojson }}'>
+      <div class="banner-track" id="banner-track"></div>
+      <div class="banner-dots" id="banner-dots"></div>
+      <button class="banner-nav prev" type="button" aria-label="prev">‹</button>
+      <button class="banner-nav next" type="button" aria-label="next">›</button>
+    </div>
+    {% endif %}
+
+    <div class="section-header fancy">
+      <div class="section-kicker">成员榜单</div>
+      <h2>敲可爱榜单 · 高分大神</h2>
+    </div>
+    {% if featured_member_profiles %}
+    <div class="qk-grid featured-members-grid">
+      {% for p in featured_member_profiles %}
+      <div class="card featured-member-card">
+        <div class="featured-avatar" style="background-image:url('{{ p.avatar_url or '' }}');"></div>
+        <div class="featured-info">
+          <div class="featured-name">{{ p.user.nickname if p.user else '未知成员' }}</div>
+          <div class="featured-tags">{{ p.other_tags or '竞技场爱好者' }}</div>
+          <div class="featured-meta">实力 {{ p.strength_score or '保密' }} · 平均胜场 {{ '%.1f'|format(p.avg_arena_wins) if p.avg_arena_wins else '-' }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <h3 class="subheading-muted">更多活跃成员</h3>
+    {% endif %}
     <div class="qk-grid members-grid">
       {% for p in top_members %}
       <div class="card member-card">
@@ -68,17 +96,32 @@
 
 <section class="qk-section">
   <div class="qk-container">
-    <h2>荣耀殿堂 · 精选成就</h2>
-    <div class="qk-grid achievements-grid">
+    <div class="section-header fancy">
+      <div class="section-kicker">荣耀殿堂</div>
+      <h2>精选成就</h2>
+    </div>
+    {% if featured_achievements_text %}
+    <div class="card ach-highlight">
+      <ul>
+        {% for t in featured_achievements_text %}
+        {% set parts = t.split(' ', 1) %}
+        <li>
+          <span class="ach-list-name">{{ parts[0] }}</span>
+          {% if parts|length > 1 %}<span class="ach-list-desc">{{ parts[1] }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <div class="qk-grid achievements-grid ach-showcase">
       {% for a in achievements %}
-      <div class="card">
-        <h3>{{ a.title }}</h3>
-        <p class="meta">
-          {{ a.member.nickname if a.member else '未知成员' }} ·
-          {{ a.season_or_version or '未知版本' }} ·
-          {{ a.rank_or_result or '无成绩信息' }}
-        </p>
-        <p class="desc">{{ a.description or '' }}</p>
+      <div class="card ach-card">
+        <div class="ach-title">{{ a.title }}</div>
+        <div class="ach-meta">
+          <span class="ach-name">{{ a.member.nickname if a.member else '未知成员' }}</span>
+          <span class="ach-meta-light">{{ a.season_or_version or '未知版本' }} · {{ a.rank_or_result or '无成绩信息' }}</span>
+        </div>
+        <p class="ach-desc">{{ a.description or '' }}</p>
       </div>
       {% else %}
       <p>暂时没有成就记录。</p>
@@ -89,16 +132,20 @@
 
 <section class="qk-section">
   <div class="qk-container">
-    <h2>精选攻略 · 竞技场宝典</h2>
-    <div class="qk-grid article-grid">
+    <div class="section-header fancy">
+      <div class="section-kicker">精选攻略</div>
+      <h2>竞技场宝典</h2>
+    </div>
+    <div class="qk-grid article-grid article-showcase">
       {% for a in featured_articles %}
-      <article class="card article-card">
-        <h3><a href="/guides/{{ a.id }}">{{ a.title }}</a></h3>
-        <p class="meta">
-          作者：{{ a.author.nickname if a.author else '未知' }} ·
+      <article class="card article-card glow" onclick="window.location='/guides/{{ a.id }}'" style="cursor:pointer;">
+        <div class="article-badge">攻略</div>
+        <h3 class="article-title"><a href="/guides/{{ a.id }}">{{ a.title }}</a></h3>
+        <p class="meta article-meta">
+          {{ a.author.nickname if a.author else '未知' }} ·
           {{ a.created_at.strftime('%Y-%m-%d') }}
         </p>
-        <div class="article-excerpt">{{ (a.content[:160])|safe }}{% if a.content|length > 160 %}...{% endif %}</div>
+        <div class="article-excerpt article-excerpt-text">{{ (a.content[:160])|safe }}{% if a.content|length > 160 %}...{% endif %}</div>
       </article>
       {% else %}
       <p>暂无精选文章，快让大神们写几篇吧～</p>
@@ -106,4 +153,78 @@
     </div>
   </div>
 </section>
+
+<script>
+(function(){
+  const el = document.getElementById('banner-carousel');
+  if (!el) return;
+  const raw = el.dataset.banners || '[]';
+  let banners = [];
+  try {
+    const parsed = JSON.parse(raw);
+    banners = (parsed || []).map((item) => {
+      if (typeof item === 'string') {
+        const parts = item.split('|');
+        return { url: parts[0], activityId: parts[1] || null };
+      }
+      if (item && typeof item === 'object') {
+        return { url: item.url || item.image || '', activityId: item.activity_id || item.id || null };
+      }
+      return null;
+    }).filter((x) => x && x.url);
+  } catch (e) {
+    banners = [];
+  }
+  if (!banners.length) return;
+
+  const track = document.getElementById('banner-track');
+  const dots = document.getElementById('banner-dots');
+  let idx = 0;
+  let timer = null;
+
+  track.innerHTML = banners.map((b, i) => `
+    <div class="banner-slide${i===0?' active':''}" data-idx="${i}" data-activity-id="${b.activityId || ''}" style="background-image:url('${b.url}')">
+      <div class="banner-mask"></div>
+    </div>
+  `).join('');
+  dots.innerHTML = banners.map((_, i) => `<button type="button" class="banner-dot${i===0?' active':''}" data-idx="${i}"></button>`).join('');
+
+  const slides = Array.from(track.querySelectorAll('.banner-slide'));
+  const dotEls = Array.from(dots.querySelectorAll('.banner-dot'));
+
+  function go(to) {
+    idx = (to + banners.length) % banners.length;
+    slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+    dotEls.forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  function start(){ timer = setInterval(next, 4500); }
+  function stop(){ if (timer) clearInterval(timer); timer = null; }
+
+  dotEls.forEach((d) => d.addEventListener('click', (e) => {
+    const to = Number(e.currentTarget.dataset.idx || 0);
+    go(to);
+    stop(); start();
+  }));
+  el.querySelector('.banner-nav.next')?.addEventListener('click', () => { next(); stop(); start(); });
+  el.querySelector('.banner-nav.prev')?.addEventListener('click', () => { prev(); stop(); start(); });
+
+  slides.forEach((s) => {
+    s.addEventListener('click', () => {
+      const id = s.dataset.activityId;
+      if (id) {
+        window.location = `/activities/${id}`;
+      }
+    });
+  });
+
+  el.addEventListener('mouseenter', stop);
+  el.addEventListener('mouseleave', start);
+
+  start();
+})();
+</script>
 {% endblock %}

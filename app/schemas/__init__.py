@@ -3,7 +3,7 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, EmailStr
 
-from app.models import UserRole, ArticleStatus
+from app.models import UserRole, ArticleStatus, AchievementStatus
 
 
 # 通用
@@ -254,18 +254,42 @@ class AchievementOut(BaseModel):
     season_or_version: Optional[str]
     rank_or_result: Optional[str]
     achieved_at: Optional[datetime]
+    status: AchievementStatus
+    is_pinned: bool = False
 
     class Config:
         from_attributes = True
+
+
+class AchievementAdminCreate(BaseModel):
+    member_id: int
+    title: str
+    description: Optional[str] = None
+    season_or_version: Optional[str] = None
+    rank_or_result: Optional[str] = None
+    achieved_at: Optional[datetime] = None
+    is_pinned: bool = False
+    status: AchievementStatus = AchievementStatus.ACTIVE
+
+
+class AchievementAdminUpdate(BaseModel):
+    member_id: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    season_or_version: Optional[str] = None
+    rank_or_result: Optional[str] = None
+    achieved_at: Optional[datetime] = None
+    status: Optional[AchievementStatus] = None
+    is_pinned: Optional[bool] = None
 
 
 # 首页配置
 class HomepageConfigOut(BaseModel):
     id: int
     team_logo_url: Optional[str]
-    banner_images: Optional[dict]
-    featured_achievements: Optional[dict]
-    featured_members: Optional[dict]
+    banner_images: Optional[list[str]] = None
+    featured_achievements: Optional[list[str]] = None
+    featured_members: Optional[list[str]] = None
 
     class Config:
         from_attributes = True
@@ -273,9 +297,9 @@ class HomepageConfigOut(BaseModel):
 
 class HomepageConfigUpdate(BaseModel):
     team_logo_url: Optional[str] = None
-    banner_images: Optional[dict] = None
-    featured_achievements: Optional[dict] = None
-    featured_members: Optional[dict] = None
+    banner_images: Optional[list[str]] = None
+    featured_achievements: Optional[list[str]] = None
+    featured_members: Optional[list[str]] = None
 
 
 class UserRegister(BaseModel):

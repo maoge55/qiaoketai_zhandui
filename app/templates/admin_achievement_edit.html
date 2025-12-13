@@ -1,0 +1,187 @@
+{% extends "admin_base.html" %}
+{% block admin_content %}
+<h1 style="margin-top:0;">{{ '新增荣耀' if achievement_id is none else '编辑荣耀' }}</h1>
+<p class="meta">填写荣耀信息。成员必须先存在用户列表，只有管理员可操作。</p>
+
+<div style="display:flex; gap:10px; align-items:center; margin: 12px 0 18px; flex-wrap:wrap;">
+  <a class="qk-btn qk-btn-outline" href="/admin/achievements">返回列表</a>
+  <button class="qk-btn qk-btn-primary" id="btn-save-ach">保存</button>
+  <span class="meta" id="ach-edit-status"></span>
+</div>
+
+<div class="card" style="padding:16px; max-width: 920px;">
+  <div style="display:grid; gap:14px;">
+    <div class="qk-field">
+      <span class="qk-label">选择成员（搜索昵称或邮箱后点击选中）</span>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input class="qk-input" id="member-search" placeholder="输入昵称或邮箱关键词" style="min-width:240px;" />
+        <button class="qk-btn qk-btn-outline" id="btn-member-search">搜索成员</button>
+        <span class="meta" id="selected-member-text"></span>
+      </div>
+      <input type="hidden" id="member-id" />
+      <div id="member-search-results" style="display:grid; gap:6px; margin-top:8px;"></div>
+    </div>
+
+    <label class="qk-field">
+      <span class="qk-label">赛季/版本</span>
+      <input class="qk-input" id="season-or-version" list="season-suggestions" placeholder="例如 30.0 或 S1" />
+      <datalist id="season-suggestions">
+        <option value="30.0"></option>
+        <option value="29.4"></option>
+        <option value="S1"></option>
+        <option value="S2"></option>
+      </datalist>
+    </label>
+
+    <label class="qk-field">
+      <span class="qk-label">标题</span>
+      <input class="qk-input" id="ach-title" placeholder="荣耀标题" />
+    </label>
+
+    <label class="qk-field">
+      <span class="qk-label">描述</span>
+      <textarea class="qk-textarea" id="ach-description" rows="4" placeholder="详细描述"></textarea>
+    </label>
+
+    <label class="qk-field">
+      <span class="qk-label">结果/名次</span>
+      <input class="qk-input" id="ach-rank" placeholder="如 冠军 / Top 8" />
+    </label>
+
+    <label class="qk-field">
+      <span class="qk-label">成就日期</span>
+      <input class="qk-input" id="ach-date" type="datetime-local" />
+    </label>
+
+    <div class="qk-field" style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:6px;">
+        <input type="checkbox" id="ach-pinned" />
+        <span class="meta">置顶</span>
+      </label>
+      <label class="qk-field" style="margin:0;">
+        <span class="qk-label" style="margin-bottom:4px;">状态</span>
+        <select class="qk-input" id="ach-status" style="min-width:140px;">
+          <option value="active">active</option>
+          <option value="archived">archived</option>
+          <option value="deleted">deleted</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+const ACHIEVEMENT_ID = {{ achievement_id if achievement_id is not none else 'null' }};
+
+async function adminFetch(url, options = {}) {
+  const token = getToken();
+  if (!token) return (window.location.href = "/login");
+  const headers = options.headers || {};
+  headers["Authorization"] = "Bearer " + token;
+  options.headers = headers;
+  return fetch(url, options);
+}
+
+function setSelectedMember(member) {
+  document.getElementById("member-id").value = member?.id || "";
+  const text = document.getElementById("selected-member-text");
+  text.textContent = member ? `已选择：${member.nickname} (${member.email})` : "未选择";
+}
+
+async function searchMember() {
+  const keyword = document.getElementById("member-search").value.trim();
+  const container = document.getElementById("member-search-results");
+  container.innerHTML = "";
+  if (!keyword) return;
+  const res = await adminFetch(`/api/admin/users/paged?search=${encodeURIComponent(keyword)}&page_size=10`);
+  const data = await res.json();
+  if (!res.ok) return alert(data.detail || "查询失败");
+  if (!data.items?.length) {
+    container.innerHTML = '<div class="meta">未找到成员</div>';
+    return;
+  }
+  for (const user of data.items) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "qk-btn qk-btn-outline";
+    btn.textContent = `${user.nickname} (${user.email})`;
+    btn.addEventListener("click", () => setSelectedMember(user));
+    container.appendChild(btn);
+  }
+}
+
+function toDatetimeLocalString(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function loadAchievement() {
+  if (!ACHIEVEMENT_ID) {
+    setSelectedMember(null);
+    document.getElementById("ach-status").value = "active";
+    return;
+  }
+  const res = await adminFetch(`/api/admin/achievements/${ACHIEVEMENT_ID}`);
+  const data = await res.json();
+  if (!res.ok) return alert(data.detail || "加载失败");
+  setSelectedMember({ id: data.member_id, nickname: data.member_nickname, email: data.member_email });
+  document.getElementById("season-or-version").value = data.season_or_version || "";
+  document.getElementById("ach-title").value = data.title || "";
+  document.getElementById("ach-description").value = data.description || "";
+  document.getElementById("ach-rank").value = data.rank_or_result || "";
+  document.getElementById("ach-date").value = toDatetimeLocalString(data.achieved_at);
+  document.getElementById("ach-status").value = data.status || "active";
+  document.getElementById("ach-pinned").checked = !!data.is_pinned;
+}
+
+async function saveAchievement() {
+  const statusEl = document.getElementById("ach-edit-status");
+  const memberId = document.getElementById("member-id").value;
+  if (!memberId) return alert("请先选择成员");
+  const payload = {
+    member_id: Number(memberId),
+    season_or_version: document.getElementById("season-or-version").value.trim() || null,
+    title: document.getElementById("ach-title").value.trim(),
+    description: document.getElementById("ach-description").value.trim() || null,
+    rank_or_result: document.getElementById("ach-rank").value.trim() || null,
+    achieved_at: document.getElementById("ach-date").value ? new Date(document.getElementById("ach-date").value).toISOString() : null,
+    status: document.getElementById("ach-status").value,
+    is_pinned: document.getElementById("ach-pinned").checked,
+  };
+  if (!payload.title) return alert("标题不能为空");
+
+  statusEl.textContent = "保存中...";
+  const method = ACHIEVEMENT_ID ? "PUT" : "POST";
+  const url = ACHIEVEMENT_ID ? `/api/admin/achievements/${ACHIEVEMENT_ID}` : "/api/admin/achievements";
+  const res = await adminFetch(url, {
+    method,
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    statusEl.textContent = "";
+    return alert(data.detail || "保存失败");
+  }
+  statusEl.textContent = "保存成功";
+  if (!ACHIEVEMENT_ID && data.id) {
+    window.location.href = `/admin/achievements/${data.id}/edit`;
+  }
+}
+
+function bindEditEvents() {
+  document.getElementById("btn-member-search")?.addEventListener("click", searchMember);
+  document.getElementById("btn-save-ach")?.addEventListener("click", saveAchievement);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindEditEvents();
+  loadAchievement();
+});
+</script>
+{% endblock %}

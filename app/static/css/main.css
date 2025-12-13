@@ -194,6 +194,18 @@ a {
   background: linear-gradient(150deg, #0f172a, #020617);
 }
 
+.hero-3d-back .hero-facts {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: #e5e7eb;
+  line-height: 1.45;
+}
+
+.hero-3d-back .hero-facts li {
+  list-style: disc;
+  opacity: 0.9;
+}
+
 .hero-portrait {
   position: absolute;
   inset: 0;
@@ -234,6 +246,91 @@ a {
   margin-bottom: 16px;
 }
 
+/* 首页 banner 栅格 */
+.banner-carousel {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.4);
+  margin-bottom: 16px;
+}
+
+.banner-track {
+  position: relative;
+  height: 260px;
+}
+
+.banner-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  cursor: pointer;
+}
+
+.banner-slide.active {
+  opacity: 1;
+}
+
+.banner-slide .banner-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.35), rgba(5, 8, 22, 0.65));
+}
+
+.banner-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.banner-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: background 0.2s ease, width 0.2s ease;
+}
+
+.banner-dot.active {
+  background: #fbbf24;
+  width: 18px;
+  border-color: #fbbf24;
+}
+
+.banner-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: rgba(0,0,0,0.35);
+  color: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.banner-nav:hover {
+  background: rgba(0,0,0,0.55);
+}
+
+.banner-nav.prev { left: 12px; }
+.banner-nav.next { right: 12px; }
+
 .qk-grid {
   display: grid;
   gap: 16px;
@@ -243,12 +340,187 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.article-showcase {
+  gap: 14px;
+}
+
+.article-card.glow {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.06), rgba(17, 24, 39, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.article-card.glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(130deg, rgba(255, 180, 50, 0.08), rgba(255, 255, 255, 0));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.article-card.glow:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 180, 50, 0.35);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.35);
+}
+
+.article-card.glow:hover::after {
+  opacity: 1;
+}
+
+.article-title a {
+  font-family: "Segoe UI Semibold", system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.article-meta {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.article-excerpt-text {
+  color: #f8fafc;
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.article-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 200, 80, 0.2);
+  color: #ffe8b3;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  margin-bottom: 8px;
+}
+
 .members-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.featured-members-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
 .achievements-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.ach-showcase {
+  gap: 14px;
+}
+
+.section-header.fancy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.section-kicker {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 180, 50, 0.16);
+  color: #fcd34d;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.01em;
+}
+
+.ach-highlight {
+  background: linear-gradient(135deg, rgba(255, 180, 50, 0.16), rgba(15, 23, 42, 0.9));
+  border-color: rgba(255, 180, 50, 0.35);
+}
+
+.ach-highlight ul {
+  padding-left: 16px;
+  margin: 8px 0 0;
+  color: #fef3c7;
+  line-height: 1.6;
+}
+
+.ach-highlight li {
+  list-style: disc;
+  margin-bottom: 4px;
+}
+
+.ach-list-name {
+  color: #fcd34d;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.ach-list-desc {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.ach-card {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.04), rgba(17, 24, 39, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ach-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(255, 180, 50, 0.12), rgba(255, 255, 255, 0));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.ach-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.ach-card:hover::after {
+  opacity: 1;
+}
+
+.ach-title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.ach-meta {
+  font-size: 13px;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+}
+
+.ach-name {
+  color: #fcd34d;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.ach-meta-light {
+  color: #cbd5e1;
+}
+
+.ach-desc {
+  color: #e5e7eb;
+  line-height: 1.5;
 }
 
 .cards-grid {
@@ -261,6 +533,54 @@ a {
   border: 1px solid var(--border-color);
   padding: 16px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* 首页精选成员（与战队名册区分） */
+.featured-member-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 180, 50, 0.18), rgba(17, 24, 39, 0.9));
+  border: 1px solid rgba(255, 180, 50, 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.featured-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #0b1220;
+}
+
+.featured-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.featured-name {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.featured-tags {
+  font-size: 13px;
+  color: #fef3c7;
+}
+
+.featured-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.subheading-muted {
+  margin: 12px 0 4px;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 /* 卡牌详情布局 */

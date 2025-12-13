@@ -4,7 +4,17 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, get_current_user_from_cookie
-from app.models import Article, ArticleStatus, UserProfile, Achievement, UserRole,Card
+from app.models import (
+    Article,
+    ArticleStatus,
+    Achievement,
+    AchievementStatus,
+    Card,
+    HomepageConfig,
+    User,
+    UserProfile,
+    UserRole,
+)
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -17,6 +27,29 @@ async def index(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_from_cookie),
 ):
+    homepage_config = db.query(HomepageConfig).first()
+    if homepage_config:
+        homepage_config.banner_images = homepage_config.banner_images or []
+        homepage_config.featured_achievements = (
+            homepage_config.featured_achievements or []
+        )
+        homepage_config.featured_members = homepage_config.featured_members or []
+
+    featured_member_profiles = []
+    if homepage_config and homepage_config.featured_members:
+        seen_ids = set()
+        for token in homepage_config.featured_members:
+            email_like = f"%{token}%"
+            profile = (
+                db.query(UserProfile)
+                .join(UserProfile.user)
+                .filter(User.email.ilike(email_like))
+                .first()
+            )
+            if profile and profile.id not in seen_ids:
+                featured_member_profiles.append(profile)
+                seen_ids.add(profile.id)
+
     # 精选文章 + 成就 + 高分大神
     featured_articles = (
         db.query(Article)
@@ -31,7 +64,8 @@ async def index(
 
     achievements = (
         db.query(Achievement)
-        .order_by(Achievement.achieved_at.desc())
+        .filter(Achievement.status == AchievementStatus.ACTIVE)
+        .order_by(Achievement.is_pinned.desc(), Achievement.achieved_at.desc())
         .limit(6)
         .all()
     )
@@ -46,6 +80,10 @@ async def index(
         .all()
     )
 
+    featured_achievements_text = (
+        homepage_config.featured_achievements if homepage_config else []
+    )
+
     return templates.TemplateResponse(
         "index.html",
         {
@@ -54,6 +92,9 @@ async def index(
             "featured_articles": featured_articles,
             "achievements": achievements,
             "top_members": top_members,
+            "homepage_config": homepage_config,
+            "featured_member_profiles": featured_member_profiles,
+            "featured_achievements_text": featured_achievements_text,
         },
     )
 
@@ -123,7 +164,8 @@ async def legends_page(
 ):
     achievements = (
         db.query(Achievement)
-        .order_by(Achievement.achieved_at.desc())
+        .filter(Achievement.status == AchievementStatus.ACTIVE)
+        .order_by(Achievement.is_pinned.desc(), Achievement.achieved_at.desc())
         .all()
     )
     return templates.TemplateResponse(
@@ -160,16 +202,18 @@ async def member_detail_page(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_from_cookie),
 ):
-    from app.models import User
-
     user = db.query(User).filter(User.id == user_id).first()
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     achievements = (
         db.query(Achievement)
-        .filter(Achievement.member_id == user_id)
-        .order_by(Achievement.achieved_at.desc())
+        .filter(
+            Achievement.member_id == user_id,
+            Achievement.status == AchievementStatus.ACTIVE,
+        )
+        .order_by(Achievement.is_pinned.desc(), Achievement.achieved_at.desc())
         .all()
     )
+
     return templates.TemplateResponse(
         "member_detail.html",
         {
@@ -316,6 +360,26 @@ async def admin_page(
         {"request": request, "current_user": current_user},
     )
 
+
+@router.get("/admin/achievements", response_class=HTMLResponse)
+async def admin_achievements_page(
+    request: Request, current_user=Depends(get_current_user_from_cookie)
+):
+    if not current_user or current_user.role != UserRole.ADMIN:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "管理员专用入口",
+                "current_user": current_user,
+            },
+            status_code=403,
+        )
+    return templates.TemplateResponse(
+        "admin_achievements.html",
+        {"request": request, "current_user": current_user},
+    )
+
 @router.get("/admin/members", response_class=HTMLResponse)
 async def admin_members_page(
     request: Request, current_user=Depends(get_current_user_from_cookie)
@@ -353,5 +417,55 @@ async def admin_homepage_page(
     return templates.TemplateResponse(
         "admin_homepage.html",
         {"request": request, "current_user": current_user},
+    )
+
+
+@router.get("/admin/achievements/new", response_class=HTMLResponse)
+async def admin_achievement_new_page(
+    request: Request, current_user=Depends(get_current_user_from_cookie)
+):
+    if not current_user or current_user.role != UserRole.ADMIN:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "管理员专用入口",
+                "current_user": current_user,
+            },
+            status_code=403,
+        )
+    return templates.TemplateResponse(
+        "admin_achievement_edit.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "achievement_id": None,
+        },
+    )
+
+
+@router.get("/admin/achievements/{achievement_id}/edit", response_class=HTMLResponse)
+async def admin_achievement_edit_page(
+    achievement_id: int,
+    request: Request,
+    current_user=Depends(get_current_user_from_cookie),
+):
+    if not current_user or current_user.role != UserRole.ADMIN:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "管理员专用入口",
+                "current_user": current_user,
+            },
+            status_code=403,
+        )
+    return templates.TemplateResponse(
+        "admin_achievement_edit.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "achievement_id": achievement_id,
+        },
     )
 
