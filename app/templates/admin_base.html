@@ -3,12 +3,12 @@
 
 {% block content %}
 <div class="qk-container">
-  <div class="card" style="padding: 0; overflow:hidden;">
-    <div style="display:flex; min-height: 520px;">
-      <aside style="width: 220px; border-right: 1px solid var(--border-color); padding: 16px;">
+  <div class="card admin-card">
+    <div class="admin-shell">
+      <aside class="admin-aside">
         <h2 style="margin:0 0 10px;">后台管理</h2>
         <p class="meta" style="margin-top:0;">仅管理员可用</p>
-        <nav style="display:grid; gap:8px; margin-top: 12px;">
+        <nav class="admin-nav">
           <a class="qk-btn qk-btn-outline" href="/admin">文章管理</a>
           <a class="qk-btn qk-btn-outline" href="/admin/members">成员管理</a>
           <a class="qk-btn qk-btn-outline" href="/admin/achievements">荣耀管理</a>
@@ -18,7 +18,7 @@
         <p class="meta">操作会直接影响线上展示，请谨慎。</p>
       </aside>
 
-      <main style="flex:1; padding: 18px;">
+      <main class="admin-main">
         {% block admin_content %}{% endblock %}
       </main>
     </div>

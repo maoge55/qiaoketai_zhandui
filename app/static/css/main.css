@@ -513,6 +513,122 @@ a {
   margin-bottom: 8px;
 }
 
+/* ===== 后台管理布局响应式 ===== */
+.admin-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-shell {
+  display: flex;
+  min-height: 520px;
+}
+
+.admin-aside {
+  width: 220px;
+  border-right: 1px solid var(--border-color);
+  padding: 16px;
+}
+
+.admin-nav {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-main {
+  flex: 1;
+  padding: 18px;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    flex-direction: column;
+    min-height: auto;
+  }
+  .admin-aside {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px;
+  }
+  .admin-nav {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .admin-main {
+    padding: 16px;
+  }
+}
+
+/* ===== 移动端导航与筛选栏优化 ===== */
+@media (max-width: 768px) {
+  .qk-header-inner {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .qk-logo-main {
+    font-size: 16px;
+  }
+
+  .qk-logo-sub {
+    font-size: 10px;
+  }
+
+  .qk-nav {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 6px 0 2px;
+    scrollbar-width: thin;
+  }
+
+  .qk-nav a {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin: 0;
+  }
+
+  .qk-user {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .cards-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cards-toolbar-left,
+  .cards-toolbar-right {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .cards-select,
+  .cards-search-input,
+  #cards-sort-order,
+  #cards-sort-by {
+    width: 100%;
+  }
+
+  .cards-label {
+    margin-bottom: 4px;
+  }
+
+  .cards-toolbar-right {
+    flex-direction: column;
+  }
+}
+
 .ach-name {
   color: #fcd34d;
   font-weight: 700;
