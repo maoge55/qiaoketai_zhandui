@@ -84,13 +84,17 @@ def list_articles_paged(
     if tag:
         q = q.join(ArticleTag).filter(ArticleTag.tag_name == tag)
 
-    # total（SQL Server 不支持对 text 列做 DISTINCT；先只取 id 再计数）
-    id_query = q.with_entities(Article.id).distinct()
-    total = id_query.count()
+    # total：SQL Server 需要 ORDER BY 列出现在 SELECT 中，改用 group_by + 子查询计数
+    id_query = (
+        q.with_entities(Article.id, Article.created_at)
+        .group_by(Article.id, Article.created_at)
+    )
 
-    # 先分页拿到去重的 id，再查实体，避免 DISTINCT 选到 text 列
+    total = db.query(func.count()).select_from(id_query.subquery()).scalar() or 0
+
+    # 分页拿到 id 列表，再查实体
     id_rows = (
-        id_query.order_by(Article.created_at.desc())
+        id_query.order_by(Article.created_at.desc(), Article.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -102,7 +106,7 @@ def list_articles_paged(
         items = (
             db.query(Article)
             .filter(Article.id.in_(ids))
-            .order_by(Article.created_at.desc())
+            .order_by(Article.created_at.desc(), Article.id.desc())
             .all()
         )
 
