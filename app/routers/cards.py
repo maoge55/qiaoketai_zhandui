@@ -21,6 +21,10 @@ def list_cards(
     expansion: Optional[str] = Query(
         None, description="兼容老参数，按 expansion 过滤（可选）"
     ),
+    # ✅ 新增：竞技场卡池版本列表筛选
+    arena_versions: Optional[str] = Query(
+        None, description="按竞技场卡池版本过滤，逗号分隔的版本列表"
+    ),
     # ✅ 新增：职业筛选
     card_class: Optional[str] = Query(
         None, description="按职业过滤"
@@ -61,7 +65,12 @@ def list_cards(
         .outerjoin(avg_sub, Card.id == avg_sub.c.cid)
     )
 
-    if version:
+    # 竞技场卡池筛选（优先级高于普通版本筛选）
+    if arena_versions:
+        versions_list = [v.strip() for v in arena_versions.split(",") if v.strip()]
+        if versions_list:
+            query = query.filter(Card.version.in_(versions_list))
+    elif version:
         query = query.filter(Card.version == version)
     elif expansion:
         query = query.filter(Card.expansion == expansion)

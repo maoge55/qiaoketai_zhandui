@@ -213,6 +213,8 @@ class HomepageConfig(Base):
     banner_images = Column(JSON, nullable=True)
     featured_achievements = Column(JSON, nullable=True)
     featured_members = Column(JSON, nullable=True)
+    # ✅ 竞技场卡池版本列表（JSON 数组）
+    arena_pool_versions = Column(JSON, nullable=True)
 
 
 class EmailVerificationCode(Base):

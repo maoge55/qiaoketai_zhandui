@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ def _normalize_homepage_config(config: HomepageConfig) -> HomepageConfig:
     config.banner_images = to_list(config.banner_images)
     config.featured_achievements = to_list(config.featured_achievements)
     config.featured_members = to_list(config.featured_members)
+    config.arena_pool_versions = to_list(config.arena_pool_versions)
     return config
 
 
@@ -42,3 +44,15 @@ def get_homepage_config(db: Session = Depends(get_db)):
         db.commit()
         db.refresh(config)
     return _normalize_homepage_config(config)
+
+
+@router.get("/arena-pool-versions", response_model=List[str])
+def get_arena_pool_versions(db: Session = Depends(get_db)):
+    """获取竞技场卡池版本列表（公共接口，前端筛选用）"""
+    config = db.query(HomepageConfig).first()
+    if not config or not config.arena_pool_versions:
+        return []
+    versions = config.arena_pool_versions
+    if isinstance(versions, list):
+        return versions
+    return []

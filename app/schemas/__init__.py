@@ -292,6 +292,7 @@ class HomepageConfigOut(BaseModel):
     banner_images: Optional[list[str]] = None
     featured_achievements: Optional[list[str]] = None
     featured_members: Optional[list[str]] = None
+    arena_pool_versions: Optional[list[str]] = None
 
     class Config:
         from_attributes = True
@@ -302,3 +303,4 @@ class HomepageConfigUpdate(BaseModel):
     banner_images: Optional[list[str]] = None
     featured_achievements: Optional[list[str]] = None
     featured_members: Optional[list[str]] = None
+    arena_pool_versions: Optional[list[str]] = None

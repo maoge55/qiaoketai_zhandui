@@ -231,3 +231,34 @@ def get_card_reviews(
         reviews=review_items,
         pagination=Pagination(page=page, total=total),
     )
+
+
+@router.delete("/{card_id}/reviews/{review_id}")
+def delete_review(
+    card_id: int,
+    review_id: int,
+    current_user: User = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    """删除点评（仅管理员及以上可操作）。"""
+
+    # 检查权限：仅 admin / super_admin 可以删除
+    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="仅管理员可删除点评")
+
+    review = (
+        db.query(CardReview)
+        .filter(
+            CardReview.id == review_id,
+            CardReview.card_id == card_id,
+        )
+        .first()
+    )
+
+    if not review:
+        raise HTTPException(status_code=404, detail="点评不存在")
+
+    db.delete(review)
+    db.commit()
+
+    return {"message": "删除成功"}

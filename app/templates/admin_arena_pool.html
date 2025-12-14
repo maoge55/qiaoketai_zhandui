@@ -1,0 +1,176 @@
+ex{% extends "admin_base.html" %}
+{% block title %}竞技场卡池管理 - 敲可爱战队{% endblock %}
+
+{% block admin_content %}
+<section class="admin-section">
+  <h2 class="section-title">竞技场卡池版本配置</h2>
+  <p class="meta">选择当前竞技场卡池中的卡牌版本，用于前端"只显示竞技场卡牌"筛选。</p>
+
+  <div id="arena-pool-loading" style="text-align:center; padding: 40px;">
+    加载中...
+  </div>
+
+  <form id="arena-pool-form" style="display: none;">
+    <div id="versions-list" class="versions-checklist" style="margin: 20px 0; display: flex; flex-wrap: wrap; gap: 12px;">
+      <!-- 版本列表会通过JS动态渲染 -->
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button type="submit" class="qk-btn qk-btn-primary">保存配置</button>
+      <span id="save-status" style="margin-left: 12px; color: var(--text-secondary);"></span>
+    </div>
+  </form>
+</section>
+
+<style>
+.versions-checklist {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--bg-secondary);
+}
+
+.version-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-width: 180px;
+}
+
+.version-item:hover {
+  border-color: var(--accent);
+}
+
+.version-item.selected {
+  border-color: var(--accent);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.version-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.version-item label {
+  cursor: pointer;
+  flex: 1;
+  font-size: 14px;
+}
+</style>
+
+<script>
+// 获取 token 的辅助函数
+function getToken() {
+  const match = document.cookie.match(/(?:^|; )access_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+(async function() {
+  const form = document.getElementById("arena-pool-form");
+  const loadingEl = document.getElementById("arena-pool-loading");
+  const versionsList = document.getElementById("versions-list");
+  const saveStatus = document.getElementById("save-status");
+
+  // 获取所有版本
+  let allVersions = [];
+  try {
+    const res = await fetch("/api/cards/expansions");
+    if (res.ok) {
+      allVersions = await res.json();
+      // 按年份倒序排序
+      allVersions.sort((a, b) => {
+        const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+        const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+        return yearB - yearA;
+      });
+    }
+  } catch (e) {
+    console.error("加载版本列表失败", e);
+  }
+
+  // 获取当前已选中的版本
+  let selectedVersions = [];
+  try {
+    const res = await fetch("/api/arena-pool-versions");
+    if (res.ok) {
+      selectedVersions = await res.json();
+    }
+  } catch (e) {
+    console.error("加载已选版本失败", e);
+  }
+
+  // 渲染版本列表
+  versionsList.innerHTML = "";
+  for (const v of allVersions) {
+    const isSelected = selectedVersions.includes(v);
+    const div = document.createElement("div");
+    div.className = "version-item" + (isSelected ? " selected" : "");
+    div.innerHTML = `
+      <input type="checkbox" id="v-${encodeURIComponent(v)}" value="${v}" ${isSelected ? "checked" : ""} />
+      <label for="v-${encodeURIComponent(v)}">${v}</label>
+    `;
+    const checkbox = div.querySelector("input");
+    checkbox.addEventListener("change", () => {
+      div.classList.toggle("selected", checkbox.checked);
+    });
+    versionsList.appendChild(div);
+  }
+
+  loadingEl.style.display = "none";
+  form.style.display = "block";
+
+  // 保存表单
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    saveStatus.textContent = "保存中...";
+
+    const checkedVersions = [];
+    versionsList.querySelectorAll("input[type=checkbox]:checked").forEach(cb => {
+      checkedVersions.push(cb.value);
+    });
+
+    try {
+      const token = getToken();
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const res = await fetch("/api/admin/homepage", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ arena_pool_versions: checkedVersions }),
+      });
+
+      if (res.ok) {
+        saveStatus.textContent = "✅ 保存成功！";
+        saveStatus.style.color = "var(--accent)";
+      } else {
+        const d = await res.json().catch(() => ({}));
+        saveStatus.textContent = "❌ 保存失败：" + (d.detail || res.status);
+        saveStatus.style.color = "#ef4444";
+      }
+    } catch (err) {
+      saveStatus.textContent = "❌ 网络错误";
+      saveStatus.style.color = "#ef4444";
+    }
+
+    setTimeout(() => {
+      saveStatus.textContent = "";
+    }, 3000);
+  });
+})();
+</script>
+{% endblock %}

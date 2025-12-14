@@ -680,6 +680,11 @@ async function initCardsPage() {
   const btnFilterUnreviewed = document.getElementById("btn-filter-unreviewed");
   let reviewedFilter = null; // null=all, true=reviewed, false=unreviewed
 
+  // 新增：竞技场卡牌筛选
+  const btnFilterArena = document.getElementById("btn-filter-arena");
+  let arenaFilter = false; // false=不筛选, true=只显示竞技场卡牌
+  let arenaPoolVersions = []; // 竞技场卡池版本列表
+
   let page = 1;
   const pageSize = 40;
   let loading = false;
@@ -688,19 +693,20 @@ async function initCardsPage() {
 
   // 只有“战队成员及以上”才显示点评按钮（后端接口仍会校验权限）
   const roleCookie = decodeURIComponent(getCookie("user_role") || "");
-  const canReview = ["member", "elite_member", "admin"].includes(roleCookie);
+  const canReview = ["member", "elite_member", "admin", "super_admin"].includes(roleCookie);
 
   // ---------- 工具函数 ----------
 
   function getFilters() {
     return {
-      expansion: expansionSelect.value || "",
+      expansion: arenaFilter ? "" : (expansionSelect.value || ""),
       cardClass: classSelect ? classSelect.value : "",
       rarity: raritySelect ? raritySelect.value : "",
       search: searchInput ? searchInput.value.trim() : "",
       sortBy: sortSelect ? sortSelect.value : "mana",
       sortOrder: sortOrder,
       reviewed_by_me: reviewedFilter,
+      arena_versions: arenaFilter ? arenaPoolVersions.join(",") : "",
     };
   }
 
@@ -862,6 +868,17 @@ async function initCardsPage() {
     }
   }
 
+  // 加载竞技场卡池版本列表
+  async function loadArenaPoolVersions() {
+    try {
+      const res = await fetch("/api/arena-pool-versions");
+      if (!res.ok) return;
+      arenaPoolVersions = await res.json();
+    } catch (err) {
+      console.error("加载竞技场卡池版本失败", err);
+    }
+  }
+
   async function loadCards(reset = false) {
     if (loading) return;
     if (!hasMore && !reset) return;
@@ -874,11 +891,12 @@ async function initCardsPage() {
       cardsGrid.innerHTML = "";
     }
 
-    const { expansion, cardClass, rarity, search, sortBy, sortOrder, reviewed_by_me } = getFilters();
+    const { expansion, cardClass, rarity, search, sortBy, sortOrder, reviewed_by_me, arena_versions } = getFilters();
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("page_size", String(pageSize));
-    if (expansion) params.append("version", expansion);
+    if (arena_versions) params.append("arena_versions", arena_versions);
+    else if (expansion) params.append("version", expansion);
     if (cardClass) params.append("card_class", cardClass);
     if (rarity) params.append("rarity", rarity);
     if (search) params.append("search", search);
@@ -920,9 +938,17 @@ async function initCardsPage() {
   // ---------- 事件监听 ----------
 
   await loadExpansions();
+  await loadArenaPoolVersions();
   await loadCards(true);
 
-  expansionSelect.addEventListener("change", () => loadCards(true));
+  expansionSelect.addEventListener("change", () => {
+    // 切换版本时，关闭竞技场筛选
+    if (arenaFilter) {
+      arenaFilter = false;
+      if (btnFilterArena) btnFilterArena.classList.remove("active");
+    }
+    loadCards(true);
+  });
   if (classSelect) {
     classSelect.addEventListener("change", () => loadCards(true));
   }
@@ -955,6 +981,26 @@ async function initCardsPage() {
   }
   
   // 筛选按钮事件
+  if (btnFilterArena) {
+    btnFilterArena.addEventListener("click", () => {
+      if (arenaPoolVersions.length === 0) {
+        alert("竞技场卡池未配置，请联系管理员设置！");
+        return;
+      }
+      arenaFilter = !arenaFilter;
+      btnFilterArena.classList.toggle("active", arenaFilter);
+      // 开启竞技场筛选时禁用版本选择
+      if (arenaFilter) {
+        expansionSelect.disabled = true;
+        expansionSelect.style.opacity = "0.5";
+      } else {
+        expansionSelect.disabled = false;
+        expansionSelect.style.opacity = "1";
+      }
+      loadCards(true);
+    });
+  }
+
   if (btnFilterReviewed) {
     btnFilterReviewed.addEventListener("click", () => {
       if (reviewedFilter === true) {
@@ -1071,8 +1117,15 @@ async function initCardDetailPage() {
     const scoreShow = Number.isNaN(scoreText) ? "0.0" : scoreText.toFixed(1);
     const contentSafe = escapeHtml(r.content || "").replace(/\n/g, "<br>");
 
+    // 判断当前用户是否为管理员
+    const currentUser = window.QK_CARD_DETAIL?.currentUser;
+    const isAdmin = currentUser && ["admin", "super_admin"].includes(currentUser.role);
+    const deleteBtn = isAdmin
+      ? `<button class="review-delete-btn" data-review-id="${r.review_id}" title="删除点评">🗑️</button>`
+      : "";
+
     return `
-      <article class="card-review-item">
+      <article class="card-review-item" data-review-id="${r.review_id}">
         <header class="review-header">
           <div class="reviewer-info">
             <div class="avatar-placeholder">${escapeHtml(reviewerInitial)}</div>
@@ -1084,9 +1137,12 @@ async function initCardDetailPage() {
               <div class="review-meta">${timeStr}${version}</div>
             </div>
           </div>
-          <div class="review-score ${scoreClass}">
-            <span class="score-number">${scoreShow}</span>
-            <span class="score-unit">分</span>
+          <div class="review-header-right" style="display:flex;align-items:center;gap:12px;">
+            ${deleteBtn}
+            <div class="review-score ${scoreClass}">
+              <span class="score-number">${scoreShow}</span>
+              <span class="score-unit">分</span>
+            </div>
           </div>
         </header>
         <div class="review-body">
@@ -1230,8 +1286,47 @@ async function initCardDetailPage() {
   chkHighScore.addEventListener("change", () => loadReviews(true));
   chkLatestVersion.addEventListener("change", () => loadReviews(true));
 
-  // 展开 / 收起 长评
-  reviewList.addEventListener("click", (e) => {
+  // 展开 / 收起 长评 + 删除点评
+  reviewList.addEventListener("click", async (e) => {
+    // 删除按钮
+    const deleteBtn = e.target.closest(".review-delete-btn");
+    if (deleteBtn) {
+      e.preventDefault();
+      const reviewId = deleteBtn.dataset.reviewId;
+      if (!confirm("确定要删除这条点评吗？")) return;
+
+      const token = getToken();
+      if (!token) {
+        alert("请先登录");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/v1/cards/${cardId}/reviews/${reviewId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        });
+        if (res.ok) {
+          // 移除 DOM 元素
+          const item = deleteBtn.closest(".card-review-item");
+          if (item) item.remove();
+          alert("删除成功");
+          // 刷新点评列表和平均分
+          loadReviews(true);
+        } else {
+          const d = await res.json().catch(() => ({}));
+          alert(d.detail || "删除失败");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("网络错误");
+      }
+      return;
+    }
+
+    // 展开/收起
     const btn = e.target.closest(".review-toggle");
     if (!btn) return;
     const item = btn.closest(".card-review-item");

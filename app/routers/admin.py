@@ -53,6 +53,7 @@ def _normalize_homepage_config(config: HomepageConfig) -> HomepageConfig:
     config.banner_images = to_list(config.banner_images)
     config.featured_achievements = to_list(config.featured_achievements)
     config.featured_members = to_list(config.featured_members)
+    config.arena_pool_versions = to_list(config.arena_pool_versions)
     return config
 
 
@@ -492,6 +493,8 @@ def admin_update_homepage(
         config.featured_achievements = payload.featured_achievements
     if payload.featured_members is not None:
         config.featured_members = payload.featured_members
+    if payload.arena_pool_versions is not None:
+        config.arena_pool_versions = payload.arena_pool_versions
 
     db.commit()
     db.refresh(config)

@@ -1157,6 +1157,24 @@ a {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* åˆ é™¤ç‚¹è¯„æŒ‰é’® */
+.review-delete-btn {
+  padding: 4px 8px;
+  font-size: 1rem;
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.review-delete-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.8);
+}
+
 .reviews-footer {
   margin-top: 20px;
   text-align: center;
@@ -2215,7 +2233,7 @@ body:has(#members-grid) .qk-container {
   }
 }
 
-/* ===== Ó°ÏìÁ¦ +1 ¶¯»­ Toast ===== */
+/* ===== Ó°ï¿½ï¿½ï¿½ï¿½ +1 ï¿½ï¿½ï¿½ï¿½ Toast ===== */
 .influence-toast {
   position: fixed;
   top: 50%;
@@ -2274,7 +2292,7 @@ body:has(#members-grid) .qk-container {
   }
 }
 
-/* ===== Ê×Ò³ Top 3 ÑùÊ½ ===== */
+/* ===== ï¿½ï¿½Ò³ Top 3 ï¿½ï¿½Ê½ ===== */
 .top3-badge {
   display: inline-block;
   padding: 4px 12px;
