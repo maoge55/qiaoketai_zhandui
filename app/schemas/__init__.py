@@ -58,6 +58,7 @@ class UserProfileBase(BaseModel):
     influence: int | None = None
     current_season_rank: int | None = None
     current_season_score: int | None = None
+    best_season_score: int | None = None
 
     class Config:
         from_attributes = True

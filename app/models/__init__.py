@@ -75,6 +75,8 @@ class UserProfile(Base):
     current_season_rank = Column(Integer, nullable=True)
     # ✅ 新增：当前赛季分数（分数越高越厉害）
     current_season_score = Column(Integer, nullable=True)
+    # ✅ 新增：历史最高分数
+    best_season_score = Column(Integer, nullable=True)
     user = relationship("User", back_populates="profile")
 
 

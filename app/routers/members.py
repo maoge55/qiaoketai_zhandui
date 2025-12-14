@@ -162,6 +162,8 @@ def update_my_profile(
         profile.arena_best_rank = payload.arena_best_rank
     if payload.current_season_score is not None:
         profile.current_season_score = payload.current_season_score
+    if payload.best_season_score is not None:
+        profile.best_season_score = payload.best_season_score
     if payload.other_tags is not None:
         profile.other_tags = payload.other_tags
 

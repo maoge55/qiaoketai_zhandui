@@ -187,6 +187,20 @@
                 style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
               />
             </div>
+
+            <!-- 历史最高分数 -->
+            <div>
+              <label for="best_season_score" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                历史最高分数
+              </label>
+              <input
+                type="number"
+                id="best_season_score"
+                name="best_season_score"
+                placeholder="例如：15000"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
           </div>
 
           <!-- 其他标签 -->
@@ -266,6 +280,7 @@
     const avgWinsInput = document.getElementById("avg_arena_wins");
     const bestRankInput = document.getElementById("arena_best_rank");
     const currentSeasonScoreInput = document.getElementById("current_season_score");
+    const bestSeasonScoreInput = document.getElementById("best_season_score");
     const tagsInput = document.getElementById("other_tags");
     const bioInput = document.getElementById("bio");
     const resetBtn = document.getElementById("profile-reset-btn");
@@ -330,6 +345,13 @@
           currentSeasonScoreInput.value = data.current_season_score;
         } else {
           currentSeasonScoreInput.value = "";
+        }
+
+        // 历史最高分数
+        if (typeof data.best_season_score === "number") {
+          bestSeasonScoreInput.value = data.best_season_score;
+        } else {
+          bestSeasonScoreInput.value = "";
         }
 
         // 其他标签
@@ -419,6 +441,12 @@
         const scoreValue = currentSeasonScoreInput.value.trim();
         if (scoreValue) {
           payload.current_season_score = parseInt(scoreValue, 10);
+        }
+
+        // 历史最高分数
+        const bestScoreValue = bestSeasonScoreInput.value.trim();
+        if (bestScoreValue) {
+          payload.best_season_score = parseInt(bestScoreValue, 10);
         }
 
         try {

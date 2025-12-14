@@ -12,11 +12,13 @@
           <p>角色：{% if user.role.value == 'super_admin' %}超级管理员{% elif user.role.value == 'admin' %}管理员{% elif user.role.value == 'elite_member' %}精英队员{% elif user.role.value == 'member' %}战队成员{% else %}普通用户{% endif %}</p>
           <p>年龄：{{ profile.age or '-' }} | 性别：{{ profile.gender or '-' }}</p>
           <p>实力：{{ profile.strength_score or '保密' }}</p>
-          {% if profile.current_season_score or profile.arena_best_rank %}
+          {% if profile.current_season_score or profile.best_season_score or profile.arena_best_rank %}
           <p>
             {% if profile.current_season_score %}当前分数：{{ profile.current_season_score }}{% endif %}
-            {% if profile.current_season_score and profile.arena_best_rank %} | {% endif %}
-            {% if profile.arena_best_rank %}历史最高：{{ profile.arena_best_rank }}{% endif %}
+            {% if profile.current_season_score and profile.best_season_score %} | {% endif %}
+            {% if profile.best_season_score %}本赛季最高分：{{ profile.best_season_score }}{% endif %}
+            {% if (profile.current_season_score or profile.best_season_score) and profile.arena_best_rank %} | {% endif %}
+            {% if profile.arena_best_rank %}本赛季最高排名：{{ profile.arena_best_rank }}{% endif %}
           </p>
           {% endif %}
           {% if profile.current_season_rank %}

@@ -250,6 +250,10 @@ function buildMemberCard(profile) {
     typeof profile.current_season_score === "number"
       ? profile.current_season_score
       : null;
+  const bestScore =
+    typeof profile.best_season_score === "number"
+      ? profile.best_season_score
+      : null;
   const bestRank = profile.arena_best_rank || null;
 
   const card = document.createElement("div");
@@ -268,7 +272,7 @@ function buildMemberCard(profile) {
           }
         </div>
         <p class="member-card-meta">
-          ${seasonScore ? `当前分数：${seasonScore}` : ""}${seasonScore && bestRank ? " ｜ " : ""}${bestRank ? `历史最高：${escapeHtml(bestRank)}` : (!seasonScore ? `年龄：${age} ｜ 性别：${gender}` : "")}
+          ${seasonScore ? `当前分数：${seasonScore}` : ""}${seasonScore && bestScore ? " ｜ " : ""}${bestScore ? `本赛季最高分：${bestScore}` : ""}${(seasonScore || bestScore) && bestRank ? " ｜ " : ""}${bestRank ? `本赛季高排名：${escapeHtml(bestRank)}` : (!(seasonScore || bestScore) ? `年龄：${age} ｜ 性别：${gender}` : "")}
         </p>
         <p class="member-card-tags">${escapeHtml(tags)}</p>
         <p class="member-card-bio">${escapeHtml(bioText)}</p>
