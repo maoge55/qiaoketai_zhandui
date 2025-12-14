@@ -1193,6 +1193,55 @@ document.addEventListener("DOMContentLoaded", () => {
   initCardDetailPage && initCardDetailPage();
   initMembersPage(); // ✅ 战队名册页面初始化
 
+  // 移动端菜单开关
+  const menuBtn = document.getElementById("qk-menu-toggle");
+  const nav = document.getElementById("qk-nav");
+  const navOverlay = document.getElementById("qk-nav-overlay");
+  if (menuBtn && nav) {
+    const closeNav = () => {
+      nav.classList.remove("open");
+      menuBtn.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("nav-open");
+    };
+
+    menuBtn.addEventListener("click", () => {
+      const isOpen = nav.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      document.body.classList.toggle("nav-open", isOpen);
+    });
+
+    // 点击导航链接后收起侧栏（仅移动端）
+    nav.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        if (window.innerWidth <= 768) closeNav();
+      });
+    });
+
+    // 点击遮罩或外部区域关闭（仅移动端）
+    if (navOverlay) {
+      navOverlay.addEventListener("click", () => {
+        if (window.innerWidth <= 768) closeNav();
+      });
+    }
+
+    document.addEventListener("click", (e) => {
+      if (
+        window.innerWidth <= 768 &&
+        nav.classList.contains("open") &&
+        !nav.contains(e.target) &&
+        !menuBtn.contains(e.target)
+      ) {
+        closeNav();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && nav.classList.contains("open")) {
+        closeNav();
+      }
+    });
+  }
+
   // 解码并显示昵称（后端对 nickname 做了 percent-encode）
   const rawNick = getCookie("user_nickname");
   if (rawNick) {

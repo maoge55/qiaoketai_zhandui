@@ -13,11 +13,14 @@
 <body>
   <header class="qk-header">
     <div class="qk-container qk-header-inner">
-      <a href="/" class="qk-logo">
+      <div class="qk-header-left">
+        <button class="qk-menu-toggle" id="qk-menu-toggle" aria-label="展开菜单" aria-expanded="false">≡</button>
+        <a href="/" class="qk-logo">
         <span class="qk-logo-main">敲可爱战队</span>
         <span class="qk-logo-sub">Hearthstone Arena Squad</span>
-      </a>
-      <nav class="qk-nav">
+        </a>
+      </div>
+      <nav class="qk-nav" id="qk-nav">
         <a href="/">主城大厅</a>
         <a href="/guides">竞技场宝典</a>
         <a href="/cards">卡牌评测</a>
@@ -54,6 +57,8 @@
       </div>
     </div>
   </header>
+
+  <div class="qk-nav-overlay" id="qk-nav-overlay" aria-hidden="true"></div>
 
   <main class="qk-main">
     {% block content %}{% endblock %}

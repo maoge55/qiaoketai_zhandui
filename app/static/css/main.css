@@ -55,6 +55,28 @@ a {
   height: 64px;
 }
 
+.qk-user {
+  margin-left: auto;
+}
+
+.qk-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qk-menu-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  font-size: 20px;
+  cursor: pointer;
+}
+
 .qk-logo {
   display: flex;
   flex-direction: column;
@@ -563,47 +585,126 @@ a {
 /* ===== 移动端导航与筛选栏优化 ===== */
 @media (max-width: 768px) {
   .qk-header-inner {
+    position: relative;
     flex-wrap: wrap;
-    height: auto;
+    height: 72px;
     gap: 8px;
-    padding: 10px 0;
+    padding: 12px 0 6px;
+  }
+
+  .qk-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .qk-logo-main {
-    font-size: 16px;
+    font-size: 18px;
+    letter-spacing: 0.05em;
   }
 
   .qk-logo-sub {
-    font-size: 10px;
+    font-size: 11px;
+  }
+
+  /* 头部三段：左侧菜单按钮，居中 Logo，右侧头像 */
+  .qk-header-left {
+    width: 100%;
+    justify-content: center;
+    position: relative;
+  }
+
+  .qk-menu-toggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .qk-logo {
+    margin: 0 auto;
+    text-align: center;
   }
 
   .qk-nav {
-    width: 100%;
+    position: fixed;
+    top: 12px;
+    left: 0;
+    height: auto;
+    max-height: calc(100vh - 24px);
+    width: 70%;
+    max-width: 300px;
+    padding: 72px 16px 20px;
+    background: linear-gradient(145deg, #1c2740, #0e1629);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 12px 0 28px rgba(0, 0, 0, 0.45);
     display: flex;
-    overflow-x: auto;
-    gap: 10px;
-    padding: 6px 0 2px;
-    scrollbar-width: thin;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 70;
+  }
+
+  .qk-nav.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .qk-nav a {
-    flex: 0 0 auto;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
     margin: 0;
+    font-size: 14px;
   }
 
   .qk-user {
-    width: 100%;
-    justify-content: flex-end;
+    width: auto;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     gap: 10px;
+  }
+
+  .qk-user-dropdown {
+    padding-bottom: 0;
+  }
+
+  .qk-user-dropdown .nick {
+    display: none;
+  }
+
+  body.nav-open {
+    overflow: hidden;
+  }
+
+  .qk-nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 60;
+  }
+
+  body.nav-open .qk-nav-overlay {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .cards-toolbar {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
   }
 
   .cards-toolbar-left,
@@ -611,6 +712,28 @@ a {
     flex-wrap: wrap;
     width: 100%;
     justify-content: flex-start;
+    gap: 8px;
+  }
+
+  /* 卡牌过滤：一行一个控件，标签与控件分行显示 */
+  .cards-toolbar .select-wrapper,
+  .cards-toolbar .cards-select,
+  .cards-toolbar .cards-search-input,
+  .cards-toolbar #cards-sort-order,
+  .cards-toolbar #cards-sort-by {
+    width: 100%;
+  }
+
+  .cards-toolbar .cards-label {
+    width: 100%;
+    display: block;
+    margin: 0 0 4px 2px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .cards-toolbar-right {
+    flex-direction: column;
   }
 
   .cards-select,
@@ -1021,14 +1144,6 @@ a {
     flex-wrap: wrap;
     height: auto;
     padding: 8px 0;
-  }
-  .qk-nav {
-    width: 100%;
-    margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    justify-content: center;
   }
   .qk-hero-inner {
     flex-direction: column;
