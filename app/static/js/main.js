@@ -707,7 +707,8 @@ async function initCardsPage() {
       sortBy: sortSelect ? sortSelect.value : "mana",
       sortOrder: sortOrder,
       reviewed_by_me: reviewedFilter,
-      arena_versions: arenaFilter ? arenaPoolVersions.join(",") : "",
+      // 竞技场模式下直接用选中的版本筛选，不再传递所有版本
+      arena_versions: "",
     };
   }
 
@@ -957,11 +958,7 @@ async function initCardsPage() {
   await loadCards(true);
 
   expansionSelect.addEventListener("change", () => {
-    // 切换版本时，关闭竞技场筛选
-    if (arenaFilter) {
-      arenaFilter = false;
-      if (btnFilterArena) btnFilterArena.classList.remove("active");
-    }
+    // 竞技场模式下切换版本，保持筛选状态
     loadCards(true);
   });
   if (classSelect) {
@@ -1013,6 +1010,10 @@ async function initCardsPage() {
           return yearB - yearA;
         });
         renderExpansionOptions(arenaVersionsSorted);
+        // 默认选中第一个版本
+        if (arenaVersionsSorted.length > 0) {
+          expansionSelect.value = arenaVersionsSorted[0];
+        }
       } else {
         // 恢复显示所有版本
         renderExpansionOptions(allExpansions);
