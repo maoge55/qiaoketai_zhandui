@@ -42,7 +42,7 @@ a {
 .qk-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 200;
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid #1f2937;
@@ -646,7 +646,7 @@ a {
     opacity: 0;
     pointer-events: none;
     transition: transform 0.3s ease, opacity 0.3s ease;
-    z-index: 70;
+    z-index: 210;
   }
 
   .qk-nav.open {
@@ -693,7 +693,7 @@ a {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
-    z-index: 60;
+    z-index: 180;
   }
 
   body.nav-open .qk-nav-overlay {
@@ -749,6 +749,25 @@ a {
 
   .cards-toolbar-right {
     flex-direction: column;
+  }
+}
+
+/* 个人资料页：移动端改为单列 */
+.profile-layout {
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+  .profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 发布攻略页：移动端两列变单列 */
+@media (max-width: 900px) {
+  .guide-meta-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
@@ -1986,6 +2005,15 @@ body:has(#members-grid) .qk-container {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
   gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .member-detail-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .member-hero-photo {
+    min-height: 260px;
+  }
 }
 
 .member-info-card {

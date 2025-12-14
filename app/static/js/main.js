@@ -1213,7 +1213,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // 点击导航链接后收起侧栏（仅移动端）
     nav.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
-        if (window.innerWidth <= 768) closeNav();
+        if (window.innerWidth <= 768) {
+          // 不阻止默认行为，让浏览器正常跳转
+          // 稍微延迟关闭菜单，确保点击有效
+          setTimeout(closeNav, 100);
+        }
       });
     });
 
