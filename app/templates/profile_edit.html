@@ -173,6 +173,20 @@
                 style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
               />
             </div>
+
+            <!-- 当前赛季分数 -->
+            <div>
+              <label for="current_season_score" style="display:block; font-size: 14px; margin-bottom: 4px;">
+                当前赛季分数
+              </label>
+              <input
+                type="number"
+                id="current_season_score"
+                name="current_season_score"
+                placeholder="例如：12500"
+                style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25); color: #fff;"
+              />
+            </div>
           </div>
 
           <!-- 其他标签 -->
@@ -251,6 +265,7 @@
     const strengthInput = document.getElementById("strength_score");
     const avgWinsInput = document.getElementById("avg_arena_wins");
     const bestRankInput = document.getElementById("arena_best_rank");
+    const currentSeasonScoreInput = document.getElementById("current_season_score");
     const tagsInput = document.getElementById("other_tags");
     const bioInput = document.getElementById("bio");
     const resetBtn = document.getElementById("profile-reset-btn");
@@ -309,6 +324,13 @@
 
         // 最佳成绩
         bestRankInput.value = data.arena_best_rank || "";
+
+        // 当前赛季分数
+        if (typeof data.current_season_score === "number") {
+          currentSeasonScoreInput.value = data.current_season_score;
+        } else {
+          currentSeasonScoreInput.value = "";
+        }
 
         // 其他标签
         tagsInput.value = data.other_tags || "";
@@ -391,6 +413,12 @@
         const avgValue = avgWinsInput.value.trim();
         if (avgValue) {
           payload.avg_arena_wins = parseFloat(avgValue);
+        }
+
+        // 当前赛季分数
+        const scoreValue = currentSeasonScoreInput.value.trim();
+        if (scoreValue) {
+          payload.current_season_score = parseInt(scoreValue, 10);
         }
 
         try {

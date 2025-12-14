@@ -73,6 +73,8 @@ class UserProfile(Base):
     influence = Column(Integer, nullable=False, default=1)
     # ✅ 新增：当前赛季排名（1 表示第一名，数字越小越靠前）
     current_season_rank = Column(Integer, nullable=True)
+    # ✅ 新增：当前赛季分数（分数越高越厉害）
+    current_season_score = Column(Integer, nullable=True)
     user = relationship("User", back_populates="profile")
 
 
