@@ -14,6 +14,7 @@
     </select>
     <button class="qk-btn qk-btn-primary" id="btn-admin-member-search" type="button">查询</button>
     <button class="qk-btn qk-btn-outline" id="btn-admin-member-reset" type="button">重置</button>
+    <button class="qk-btn qk-btn-primary" id="btn-admin-member-save-all" type="button" style="background-color: #10b981; border-color: #10b981;">整页保存</button>
 
     <span class="meta" id="admin-users-status"></span>
   </div>
@@ -216,6 +217,72 @@ document.addEventListener("DOMContentLoaded", () => {
     alert("更新成功");
     load();
   });
+
+  // 批量保存
+  const btnSaveAll = document.getElementById("btn-admin-member-save-all");
+  if (btnSaveAll) {
+    btnSaveAll.addEventListener("click", async () => {
+      if (!confirm("确定要保存当前页面的所有修改吗？这可能需要一点时间。")) return;
+
+      const rows = document.querySelectorAll("#admin-users-tbody tr");
+      if (rows.length === 0) return;
+
+      status.textContent = "正在批量保存...";
+      btnSaveAll.disabled = true;
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const tr of rows) {
+        // 跳过“没有数据”行
+        if (tr.querySelector("td[colspan]")) continue;
+
+        const saveBtn = tr.querySelector(".admin-user-save");
+        if (!saveBtn) continue;
+
+        const id = saveBtn.dataset.id;
+        const roleSelect = tr.querySelector(`select.admin-user-role[data-id="${id}"]`);
+        const influenceInput = tr.querySelector(`input.admin-user-influence[data-id="${id}"]`);
+        const rankInput = tr.querySelector(`input.admin-user-rank[data-id="${id}"]`);
+
+        if (!roleSelect || !influenceInput || !rankInput) continue;
+
+        const role = roleSelect.value;
+        const influenceVal = influenceInput.value;
+        const rankVal = rankInput.value;
+
+        try {
+          // 1) 更新 role
+          const res1 = await adminFetch(`/api/admin/users/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role }),
+          });
+          if (!res1.ok) throw new Error("Role update failed");
+
+          // 2) 更新 profile
+          const payload = {
+            influence: influenceVal === "" ? null : Number(influenceVal),
+            current_season_rank: rankVal === "" ? null : Number(rankVal),
+          };
+          const res2 = await adminFetch(`/api/admin/members/${id}/profile_admin`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!res2.ok) throw new Error("Profile update failed");
+
+          successCount++;
+        } catch (e) {
+          console.error(`Failed to update user ${id}:`, e);
+          failCount++;
+        }
+      }
+
+      btnSaveAll.disabled = false;
+      alert(`批量保存完成。\n成功：${successCount}\n失败：${failCount}`);
+      load();
+    });
+  }
 
   load();
 });
