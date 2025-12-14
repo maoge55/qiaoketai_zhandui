@@ -5,7 +5,7 @@ from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, require_elite_member, require_admin, get_current_user, require_member
-from app.models import Article, ArticleTag, ArticleStatus, User
+from app.models import Article, ArticleTag, ArticleStatus, User, UserRole
 from app.schemas import (
     ArticleCreate,
     ArticleUpdate,
@@ -223,7 +223,7 @@ def update_article(
     if not article:
         raise HTTPException(404, "文章不存在")
 
-    is_admin = current_user.role == current_user.role.ADMIN
+    is_admin = current_user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]
     if article.author_id != current_user.id and not is_admin:
         raise HTTPException(403, "仅作者或管理员可编辑")
 

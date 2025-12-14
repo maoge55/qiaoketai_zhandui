@@ -60,7 +60,7 @@
         </label>
       </div>
 
-      {% if current_user and current_user.role.value == 'admin' %}
+      {% if current_user and current_user.role.value in ['admin','super_admin'] %}
       <label class="qk-field" style="display:flex; align-items:center; gap:8px;">
         <input type="checkbox" id="g-featured" />
         <span class="qk-label" style="margin:0;">设为首页精选</span>

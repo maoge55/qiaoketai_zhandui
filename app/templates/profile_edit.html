@@ -59,7 +59,9 @@
         </p>
         <p style="margin: 4px 0; font-size: 14px;">
           <strong>角色：</strong>
-          {% if current_user.role.value == 'admin' %}
+          {% if current_user.role.value == 'super_admin' %}
+            超级管理员
+          {% elif current_user.role.value == 'admin' %}
             管理员
           {% elif current_user.role.value == 'elite_member' %}
             精英队员

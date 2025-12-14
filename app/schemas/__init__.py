@@ -36,6 +36,8 @@ class UserRegister(BaseModel):
     email: EmailStr
     password_md5: str
     verification_code: str
+    # 会员码（前端传 md5）
+    membership_code_md5: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -300,13 +302,3 @@ class HomepageConfigUpdate(BaseModel):
     banner_images: Optional[list[str]] = None
     featured_achievements: Optional[list[str]] = None
     featured_members: Optional[list[str]] = None
-
-
-class UserRegister(BaseModel):
-    username: str
-    nickname: str
-    email: EmailStr
-    password_md5: str
-    verification_code: str
-    # 新增：会员码（前端传 md5）
-    membership_code_md5: str | None = None

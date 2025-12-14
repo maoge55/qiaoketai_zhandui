@@ -14,7 +14,7 @@
     </div>
 
     <div class="guides-toolbar-right">
-      {% if current_user and current_user.role.value in ['elite_member','admin'] %}
+      {% if current_user and current_user.role.value in ['elite_member','admin','super_admin'] %}
       <a href="/guides/new" class="qk-btn qk-btn-primary">发布攻略</a>
       {% endif %}
     </div>

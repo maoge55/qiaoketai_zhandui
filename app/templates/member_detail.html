@@ -9,7 +9,7 @@
         <div class="info-box">
           <h1>{{ user.nickname }}</h1>
           <p>账号：{{ user.username }}</p>
-          <p>角色：{{ user.role.value }}</p>
+          <p>角色：{% if user.role.value == 'super_admin' %}超级管理员{% elif user.role.value == 'admin' %}管理员{% elif user.role.value == 'elite_member' %}精英队员{% elif user.role.value == 'member' %}战队成员{% else %}普通用户{% endif %}</p>
           <p>年龄：{{ profile.age or '-' }} | 性别：{{ profile.gender or '-' }}</p>
           <p>实力：{{ profile.strength_score or '保密' }}</p>
           <p>标签：{{ profile.other_tags or '-' }}</p>

@@ -51,7 +51,7 @@
 
       <div class="card-section" id="write-review">
         <h3>写点评（短评 + 评分）</h3>
-        {% if current_user and current_user.role.value in ['member','elite_member','admin'] %}
+        {% if current_user and current_user.role.value in ['member','elite_member','admin','super_admin'] %}
         <div style="display:grid; gap: 10px;">
           <label class="qk-field">
             <span class="qk-label">评分（0~5）</span>
