@@ -235,12 +235,7 @@ function buildMemberCard(profile) {
 
   card.innerHTML = `
     <a href="/members/${profile.user_id}" class="member-card-link">
-      <!-- 左侧：方形头像卡片 -->
-      <div class="member-card-avatar"
-           style="${avatarUrl ? `background-image:url('${avatarUrl}')` : ""}">
-      </div>
-
-      <!-- 中间：基本信息 -->
+      <div class="member-card-avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}')` : ""}"></div>
       <div class="member-card-info">
         <div class="member-card-top">
           <h3 class="member-card-name">${escapeHtml(nickname)}</h3>
@@ -256,12 +251,11 @@ function buildMemberCard(profile) {
         <p class="member-card-tags">${escapeHtml(tags)}</p>
         <p class="member-card-bio">${escapeHtml(bioText)}</p>
       </div>
-
-      <!-- 右侧：影响力等信息 -->
-      <div class="member-card-right">
-        <span class="member-card-influence">
-          影响力 ${influence}
-        </span>
+      <div class="member-card-stats">
+        <div class="stat-item">
+          <span class="stat-value">${influence}</span>
+          <span class="stat-label">影响力</span>
+        </div>
       </div>
     </a>
   `;

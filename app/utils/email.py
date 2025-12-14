@@ -36,7 +36,7 @@ def send_email_qq(
         server = smtplib.SMTP_SSL(smtp_server, port)
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, recipient_emails, msg.as_string())
-        print("✅ 邮件发送成功")
+        print(f"✅ 邮件发送成功:{msg.as_string()}")
         is_send = True
     except Exception:
         traceback.print_exc()
