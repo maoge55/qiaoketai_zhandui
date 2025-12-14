@@ -684,6 +684,7 @@ async function initCardsPage() {
   const btnFilterArena = document.getElementById("btn-filter-arena");
   let arenaFilter = false; // false=不筛选, true=只显示竞技场卡牌
   let arenaPoolVersions = []; // 竞技场卡池版本列表
+  let allExpansions = []; // 所有版本列表（用于切换时恢复）
 
   let page = 1;
   const pageSize = 40;
@@ -699,7 +700,7 @@ async function initCardsPage() {
 
   function getFilters() {
     return {
-      expansion: arenaFilter ? "" : (expansionSelect.value || ""),
+      expansion: expansionSelect.value || "",
       cardClass: classSelect ? classSelect.value : "",
       rarity: raritySelect ? raritySelect.value : "",
       search: searchInput ? searchInput.value.trim() : "",
@@ -863,8 +864,22 @@ async function initCardsPage() {
         option.textContent = exp;
         expansionSelect.appendChild(option);
       }
+
+      // 保存所有版本列表
+      allExpansions = expansions;
     } catch (err) {
       console.error("加载版本列表失败", err);
+    }
+  }
+
+  // 渲染版本下拉选项
+  function renderExpansionOptions(versions) {
+    expansionSelect.innerHTML = "";
+    for (const exp of versions) {
+      const option = document.createElement("option");
+      option.value = exp;
+      option.textContent = exp;
+      expansionSelect.appendChild(option);
     }
   }
 
@@ -989,13 +1004,18 @@ async function initCardsPage() {
       }
       arenaFilter = !arenaFilter;
       btnFilterArena.classList.toggle("active", arenaFilter);
-      // 开启竞技场筛选时禁用版本选择
+      // 切换版本下拉框选项
       if (arenaFilter) {
-        expansionSelect.disabled = true;
-        expansionSelect.style.opacity = "0.5";
+        // 只显示竞技场卡池版本
+        const arenaVersionsSorted = arenaPoolVersions.slice().sort((a, b) => {
+          const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+          const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+          return yearB - yearA;
+        });
+        renderExpansionOptions(arenaVersionsSorted);
       } else {
-        expansionSelect.disabled = false;
-        expansionSelect.style.opacity = "1";
+        // 恢复显示所有版本
+        renderExpansionOptions(allExpansions);
       }
       loadCards(true);
     });

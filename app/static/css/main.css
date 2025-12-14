@@ -143,6 +143,54 @@ a {
   background: rgba(255, 180, 50, 0.1);
 }
 
+/* 筛选按钮激活状态 */
+.qk-btn-outline.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #111827;
+  font-weight: 600;
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(255, 180, 50, 0.4);
+}
+
+.qk-btn-outline.active:hover {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  box-shadow: 0 0 16px rgba(255, 180, 50, 0.6);
+}
+
+/* 正序倒序按钮样式 */
+.cards-sort-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cards-sort-order:hover {
+  background: rgba(31, 41, 55, 0.9);
+  border-color: rgba(148, 163, 184, 0.6);
+}
+
+.cards-sort-order .order-arrow {
+  font-size: 1rem;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+}
+
+.cards-sort-order[data-order="desc"] .order-arrow {
+  color: var(--primary);
+}
+
+.cards-sort-order[data-order="asc"] .order-arrow {
+  color: #38bdf8;
+}
+
 .qk-main {
   padding: 24px 0 40px;
   min-height: calc(100vh - 180px);
