@@ -117,6 +117,11 @@ def upsert_review(
         created_at=datetime.utcnow(),
     )
     db.add(review)
+    
+    # 首次点评，影响力 +1
+    if current_user.profile:
+        current_user.profile.influence = (current_user.profile.influence or 0) + 1
+        
     db.commit()
     db.refresh(review)
 
@@ -204,7 +209,7 @@ def get_card_reviews(
     for r in reviews:
         u = r.reviewer
         # 简单规则：elite_member / admin 视为“专家”
-        is_expert = u.role in (UserRole.ELITE_MEMBER, UserRole.ADMIN)
+        is_expert = u.role in (UserRole.ELITE_MEMBER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
 
         review_items.append(
             CardReviewItem(

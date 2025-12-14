@@ -25,6 +25,7 @@ class UserRole(str, Enum):
     MEMBER = "member"
     ELITE_MEMBER = "elite_member"
     ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
 
 
 class User(Base):
@@ -35,7 +36,11 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(50), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    role = Column(SAEnum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(
+        SAEnum(UserRole, values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.USER,
+        nullable=False,
+    )
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

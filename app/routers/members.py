@@ -41,7 +41,7 @@ def list_members(
         .join(User)
         .filter(
             User.role.in_(
-                [UserRole.MEMBER, UserRole.ELITE_MEMBER, UserRole.ADMIN]
+                [UserRole.MEMBER, UserRole.ELITE_MEMBER, UserRole.ADMIN, UserRole.SUPER_ADMIN]
             )
         )
     )
@@ -53,13 +53,13 @@ def list_members(
     )
 
     # ✅ 排序规则：
-    # 1）影响力高的排在前面（desc）
-    # 2）有当前赛季排名的排在前面，名次数字越小越靠前
+    # 1）有当前赛季排名的排在前面，名次数字越小越靠前 (asc)
+    # 2）然后按影响力高的排在前面（desc）
     # 3）然后按用户 id 稳定排序
     q = q.order_by(
-        UserProfile.influence.desc(),
         rank_is_null,
         UserProfile.current_season_rank.asc(),
+        UserProfile.influence.desc(),
         User.id.asc(),
     )
 
@@ -117,7 +117,7 @@ def member_achievements(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/me/profile", response_model=UserProfileOut)
-def get_my_profile(current_user=Depends(require_member), db: Session = Depends(get_db)):
+def get_my_profile(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     profile = (
         db.query(UserProfile)
         .filter(UserProfile.user_id == current_user.id)
@@ -134,7 +134,7 @@ def get_my_profile(current_user=Depends(require_member), db: Session = Depends(g
 @router.put("/me/profile", response_model=UserProfileOut)
 def update_my_profile(
     payload: UserProfileUpdate,
-    current_user=Depends(require_member),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     profile = (

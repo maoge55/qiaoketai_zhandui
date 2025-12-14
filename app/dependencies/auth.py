@@ -57,10 +57,16 @@ def require_role(min_role: UserRole) -> Callable:
         UserRole.MEMBER: 2,
         UserRole.ELITE_MEMBER: 3,
         UserRole.ADMIN: 4,
+        UserRole.SUPER_ADMIN: 5,
     }
 
     def dependency(user: User = Depends(get_current_user)) -> User:
-        if role_order[user.role] < role_order[min_role]:
+        # 兼容旧数据：如果数据库里是 admin 但代码里没 super_admin，这里不会报错
+        # 但如果 min_role 是 super_admin，普通 admin 就会被拦住
+        user_level = role_order.get(user.role, 0)
+        required_level = role_order.get(min_role, 0)
+        
+        if user_level < required_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="权限不足",

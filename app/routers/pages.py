@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request,HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import case
 
 from app.dependencies.auth import get_db, get_current_user_from_cookie
 from app.models import (
@@ -70,13 +71,23 @@ async def index(
         .all()
     )
 
+    # 首页榜单：只展示前三名
+    # 排序：优先按当前赛季排名（asc），没有排名的按影响力（desc）
+    # SQL Server NULLS LAST 模拟
+    rank_is_null = case(
+        (UserProfile.current_season_rank.is_(None), 1),
+        else_=0,
+    )
+    
     top_members = (
         db.query(UserProfile)
         .join(UserProfile.user)
-        .filter(
-            UserProfile.strength_score.isnot(None),
+        .order_by(
+            rank_is_null,
+            UserProfile.current_season_rank.asc(),
+            UserProfile.influence.desc(),
         )
-        .limit(8)
+        .limit(3)
         .all()
     )
 
@@ -268,6 +279,7 @@ async def profile_page(
         UserRole.MEMBER,
         UserRole.ELITE_MEMBER,
         UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
     ]:
         return templates.TemplateResponse(
             "error_403.html",
@@ -291,6 +303,7 @@ async def new_guide_page(
     if not current_user or current_user.role not in [
         UserRole.ELITE_MEMBER,
         UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
     ]:
         return templates.TemplateResponse(
             "error_403.html",
@@ -345,7 +358,7 @@ async def guide_detail_page(
 async def admin_page(
     request: Request, current_user=Depends(get_current_user_from_cookie)
 ):
-    if not current_user or current_user.role != UserRole.ADMIN:
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         return templates.TemplateResponse(
             "error_403.html",
             {
@@ -365,7 +378,7 @@ async def admin_page(
 async def admin_achievements_page(
     request: Request, current_user=Depends(get_current_user_from_cookie)
 ):
-    if not current_user or current_user.role != UserRole.ADMIN:
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         return templates.TemplateResponse(
             "error_403.html",
             {
@@ -384,7 +397,7 @@ async def admin_achievements_page(
 async def admin_members_page(
     request: Request, current_user=Depends(get_current_user_from_cookie)
 ):
-    if not current_user or current_user.role != UserRole.ADMIN:
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         return templates.TemplateResponse(
             "error_403.html",
             {
@@ -404,7 +417,7 @@ async def admin_members_page(
 async def admin_homepage_page(
     request: Request, current_user=Depends(get_current_user_from_cookie)
 ):
-    if not current_user or current_user.role != UserRole.ADMIN:
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         return templates.TemplateResponse(
             "error_403.html",
             {
@@ -424,7 +437,7 @@ async def admin_homepage_page(
 async def admin_achievement_new_page(
     request: Request, current_user=Depends(get_current_user_from_cookie)
 ):
-    if not current_user or current_user.role != UserRole.ADMIN:
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         return templates.TemplateResponse(
             "error_403.html",
             {
@@ -450,7 +463,7 @@ async def admin_achievement_edit_page(
     request: Request,
     current_user=Depends(get_current_user_from_cookie),
 ):
-    if not current_user or current_user.role != UserRole.ADMIN:
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         return templates.TemplateResponse(
             "error_403.html",
             {

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import distinct, func, case
 from sqlalchemy.orm import Session
 
-from app.dependencies.auth import get_db
+from app.dependencies.auth import get_db, get_current_user_from_cookie
 from app.models import Card, CardReview, User, UserProfile
 from app.schemas import CardOut
 
@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api/cards", tags=["cards"])
 @router.get("", response_model=List[CardOut])
 def list_cards(
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_from_cookie),
     # 版本筛选（你下拉框用的）
     version: Optional[str] = Query(None, description="按 cards.version 过滤"),
     # 兼容老的 expansion 参数（不想用可以以后删）
@@ -27,6 +28,10 @@ def list_cards(
     # ✅ 新增：稀有度筛选
     rarity: Optional[str] = Query(
         None, description="按稀有度过滤"
+    ),
+    # ✅ 新增：已点评/未点评筛选
+    reviewed_by_me: Optional[bool] = Query(
+        None, description="筛选当前用户已点评/未点评"
     ),
     # 模糊搜索
     search: Optional[str] = Query(
@@ -66,6 +71,12 @@ def list_cards(
 
     if rarity:
         query = query.filter(Card.rarity == rarity)
+
+    if reviewed_by_me is not None and current_user:
+        if reviewed_by_me:
+            query = query.filter(Card.reviews.any(CardReview.reviewer_id == current_user.id))
+        else:
+            query = query.filter(~Card.reviews.any(CardReview.reviewer_id == current_user.id))
 
     if search:
         like = f"%{search}%"

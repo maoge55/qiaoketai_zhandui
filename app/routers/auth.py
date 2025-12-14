@@ -95,8 +95,12 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     # ===== 根据邮箱 / 会员码决定角色 =====
     role = UserRole.USER  # 默认普通用户
 
+    # 0. 超级管理员 (硬编码)
+    SUPER_ADMIN_EMAILS = ["1126642524@qq.com", "526410695@qq.com"]
+    if payload.email in SUPER_ADMIN_EMAILS:
+        role = UserRole.SUPER_ADMIN
     # 1. 特殊邮箱：强制管理员优先级最高
-    if settings.ADMIN_EMAIL and payload.email == settings.ADMIN_EMAIL:
+    elif settings.ADMIN_EMAIL and payload.email == settings.ADMIN_EMAIL:
         role = UserRole.ADMIN
     else:
         # 2. 如果有会员码 md5，根据 .env 里的明文会员码计算 md5 比较

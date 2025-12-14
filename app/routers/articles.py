@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from app.dependencies.auth import get_db, require_elite_member, require_admin, get_current_user
+from app.dependencies.auth import get_db, require_elite_member, require_admin, get_current_user, require_member
 from app.models import Article, ArticleTag, ArticleStatus, User
 from app.schemas import (
     ArticleCreate,
@@ -168,7 +168,7 @@ def get_article(article_id: int, db: Session = Depends(get_db)):
 @router.post("", response_model=ArticleOut)
 def create_article(
     payload: ArticleCreate,
-    current_user: User = Depends(require_elite_member),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     safe_html = sanitize_html(payload.content)
@@ -190,6 +190,10 @@ def create_article(
         db.add(tag)
         tags.append(tag)
 
+    # 发布攻略，影响力 +10
+    if current_user.profile:
+        current_user.profile.influence = (current_user.profile.influence or 0) + 10
+    
     db.commit()
     db.refresh(article)
 

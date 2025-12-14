@@ -178,16 +178,41 @@ def admin_list_users_paged(
 def admin_update_user(
     user_id: int,
     payload: dict,
-    _: User = Depends(require_admin),
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "用户不存在")
 
-    role = payload.get("role")
-    if role:
-        user.role = UserRole(role)
+    new_role_str = payload.get("role")
+    if new_role_str:
+        try:
+            new_role = UserRole(new_role_str)
+        except ValueError:
+            raise HTTPException(400, "无效的角色")
+
+        # 权限检查逻辑
+        is_super = (current_admin.role == UserRole.SUPER_ADMIN)
+        
+        # 1. 如果当前操作者不是超级管理员
+        if not is_super:
+            # 不能修改 Admin 或 SuperAdmin 的角色
+            if user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+                raise HTTPException(403, "普通管理员无法修改管理员或超级管理员的角色")
+            
+            # 不能将用户提升为 Admin 或 SuperAdmin
+            if new_role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+                raise HTTPException(403, "普通管理员最高只能授权到精英会员")
+
+        # 2. 即使是超级管理员，也不能修改其他超级管理员（可选，防止误操作，或者允许）
+        # 这里假设超级管理员可以互改，或者自己改自己，暂不做额外限制，除非需求明确。
+        # 但通常超级管理员不能被降级，除非是另一个超级管理员操作。
+        # 既然需求只说了“只有超级管理员可以修改admin用户的role”，那这里已经满足了：
+        # 普通管理员在上面已经被拦住了。
+
+        user.role = new_role
+
     db.commit()
     return {"message": "更新成功"}
 

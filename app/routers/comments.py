@@ -134,7 +134,7 @@ def delete_comment(
     if not article:
         raise HTTPException(404, "文章不存在")
 
-    is_admin = current_user.role == UserRole.ADMIN
+    is_admin = current_user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]
     is_owner = comment.user_id == current_user.id
     is_article_author = article.author_id == current_user.id
     if not (is_admin or is_owner or is_article_author):
@@ -168,7 +168,7 @@ def pin_comment(
     if not article:
         raise HTTPException(404, "文章不存在")
 
-    is_admin = current_user.role == UserRole.ADMIN
+    is_admin = current_user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]
     is_article_author = article.author_id == current_user.id
     if not (is_admin or is_article_author):
         raise HTTPException(403, "权限不足")

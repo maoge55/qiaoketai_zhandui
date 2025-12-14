@@ -73,8 +73,9 @@
     {% endif %}
     <div class="qk-grid members-grid">
       {% for p in top_members %}
-      <div class="member-card member-card-animated">
+      <div class="member-card member-card-animated top3-rank-{{ loop.index }}">
         <a href="/members/{{ p.user_id }}" class="member-card-link">
+          <div class="top3-badge">TOP {{ loop.index }}</div>
           <div class="member-card-avatar" style="background-image:url('{{ p.avatar_url or '' }}');"></div>
           <div class="member-card-info">
             <div class="member-card-top">

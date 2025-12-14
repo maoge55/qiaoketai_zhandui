@@ -58,6 +58,10 @@
     </div>
 
     <div class="cards-toolbar-right">
+      <div class="btn-group" style="margin-right: 12px;">
+        <button id="btn-filter-reviewed" class="qk-btn qk-btn-outline qk-btn-sm" title="只看我点评过的">已点评</button>
+        <button id="btn-filter-unreviewed" class="qk-btn qk-btn-outline qk-btn-sm" title="只看我未点评的">未点评</button>
+      </div>
       <input
         id="card-search"
         type="text"
@@ -65,6 +69,12 @@
         placeholder="搜索卡牌名称..."
       />
     </div>
+  </div>
+  
+  <div style="text-align: center; margin-bottom: 12px; color: #fbbf24; font-size: 13px; font-weight: 500;">
+    <span style="display:inline-block; background:rgba(251, 191, 36, 0.1); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(251, 191, 36, 0.3);">
+      ✨ 小贴士：每点评一张卡牌，影响力 +1 哦！
+    </span>
   </div>
 
   <div id="cards-grid" class="qk-grid cards-grid"></div>

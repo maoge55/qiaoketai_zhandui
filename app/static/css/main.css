@@ -2214,3 +2214,105 @@ body:has(#members-grid) .qk-container {
     justify-content: center;
   }
 }
+
+/* ===== 影响力 +1 动画 Toast ===== */
+.influence-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: rgba(16, 185, 129, 0.95); /* Emerald Green */
+  color: #fff;
+  padding: 16px 32px;
+  border-radius: 50px;
+  font-size: 20px;
+  font-weight: 800;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.influence-toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  animation: floatUp 1.5s ease-out forwards;
+}
+
+.influence-toast::before {
+  content: '';
+  color: #fbbf24; /* Amber */
+  font-size: 24px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-20px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-50px);
+  }
+}
+
+/* ===== 首页 Top 3 样式 ===== */
+.top3-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.top3-rank-1 .top3-badge {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border: 1px solid #fcd34d;
+}
+
+.top3-rank-2 .top3-badge {
+  background: linear-gradient(135deg, #94a3b8, #475569);
+  border: 1px solid #cbd5e1;
+}
+
+.top3-rank-3 .top3-badge {
+  background: linear-gradient(135deg, #b45309, #78350f);
+  border: 1px solid #d97706;
+}
+
+.top3-rank-1 .member-card-avatar {
+  border: 3px solid #fbbf24;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+
+.top3-rank-2 .member-card-avatar {
+  border: 3px solid #cbd5e1;
+}
+
+.top3-rank-3 .member-card-avatar {
+  border: 3px solid #b45309;
+}
+

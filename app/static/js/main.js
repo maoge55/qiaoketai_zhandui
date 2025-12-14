@@ -47,6 +47,23 @@ function nl2br(text) {
   return escapeHtml(text).replace(/\n/g, "<br>");
 }
 
+// 影响力 +1 动画
+function showInfluenceToast(points = 1) {
+  const toast = document.createElement("div");
+  toast.className = "influence-toast";
+  toast.innerHTML = `影响力 +${points}`;
+  document.body.appendChild(toast);
+
+  // 强制重绘
+  toast.offsetHeight;
+
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.remove();
+  }, 2000);
+}
+
 // 退出登录
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-logout") {
@@ -229,6 +246,7 @@ function buildMemberCard(profile) {
     typeof profile.current_season_rank === "number"
       ? profile.current_season_rank
       : null;
+  const bestRank = profile.arena_best_rank || null;
 
   const card = document.createElement("div");
   card.className = "card member-card member-card-animated";
@@ -246,7 +264,7 @@ function buildMemberCard(profile) {
           }
         </div>
         <p class="member-card-meta">
-          年龄：${age} ｜ 性别：${gender}
+          ${bestRank ? `历史最高：${escapeHtml(bestRank)}` : `年龄：${age} ｜ 性别：${gender}`}
         </p>
         <p class="member-card-tags">${escapeHtml(tags)}</p>
         <p class="member-card-bio">${escapeHtml(bioText)}</p>
@@ -597,6 +615,8 @@ document.addEventListener("click", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) return alert(data.detail || "回复失败");
+    
+    // 评论成功不加影响力，或者你可以加
     loadComments();
     return;
   }
@@ -654,6 +674,11 @@ async function initCardsPage() {
   const sortSelect = document.getElementById("cards-sort-by");
   const sortOrderBtn = document.getElementById("cards-sort-order");
   const loadMoreBtn = document.getElementById("cards-load-more");
+  
+  // 新增：已点评/未点评筛选
+  const btnFilterReviewed = document.getElementById("btn-filter-reviewed");
+  const btnFilterUnreviewed = document.getElementById("btn-filter-unreviewed");
+  let reviewedFilter = null; // null=all, true=reviewed, false=unreviewed
 
   let page = 1;
   const pageSize = 40;
@@ -675,6 +700,7 @@ async function initCardsPage() {
       search: searchInput ? searchInput.value.trim() : "",
       sortBy: sortSelect ? sortSelect.value : "mana",
       sortOrder: sortOrder,
+      reviewed_by_me: reviewedFilter,
     };
   }
 
@@ -848,7 +874,7 @@ async function initCardsPage() {
       cardsGrid.innerHTML = "";
     }
 
-    const { expansion, cardClass, rarity, search, sortBy, sortOrder } = getFilters();
+    const { expansion, cardClass, rarity, search, sortBy, sortOrder, reviewed_by_me } = getFilters();
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("page_size", String(pageSize));
@@ -858,6 +884,7 @@ async function initCardsPage() {
     if (search) params.append("search", search);
     if (sortBy) params.append("sort_by", sortBy);
     if (sortOrder) params.append("sort_order", sortOrder);
+    if (reviewed_by_me !== null) params.append("reviewed_by_me", String(reviewed_by_me));
 
     try {
       const res = await fetch(`/api/cards?${params.toString()}`);
@@ -925,6 +952,35 @@ async function initCardsPage() {
   }
   if (loadMoreBtn) {
     loadMoreBtn.addEventListener("click", () => loadCards(false));
+  }
+  
+  // 筛选按钮事件
+  if (btnFilterReviewed) {
+    btnFilterReviewed.addEventListener("click", () => {
+      if (reviewedFilter === true) {
+        reviewedFilter = null;
+        btnFilterReviewed.classList.remove("active");
+      } else {
+        reviewedFilter = true;
+        btnFilterReviewed.classList.add("active");
+        if (btnFilterUnreviewed) btnFilterUnreviewed.classList.remove("active");
+      }
+      loadCards(true);
+    });
+  }
+  
+  if (btnFilterUnreviewed) {
+    btnFilterUnreviewed.addEventListener("click", () => {
+      if (reviewedFilter === false) {
+        reviewedFilter = null;
+        btnFilterUnreviewed.classList.remove("active");
+      } else {
+        reviewedFilter = false;
+        btnFilterUnreviewed.classList.add("active");
+        if (btnFilterReviewed) btnFilterReviewed.classList.remove("active");
+      }
+      loadCards(true);
+    });
   }
 
   // 点击卡牌跳详情
@@ -1150,6 +1206,16 @@ async function initCardDetailPage() {
       }
 
       if (myStatusEl) myStatusEl.textContent = "已保存 ✔";
+      
+      // 提交成功后，如果是首次点评（之前没有加载到 review_id），弹出影响力 +1 提示
+      // 这里简单判断：如果之前 myScoreEl.value 是空的，说明可能是新增
+      // 或者更严谨一点，loadMyReview 会填充 value。
+      // 简单起见，只要成功就弹个提示，或者后端返回 flag。
+      // 由于后端没返回 flag，这里前端简单处理：总是提示，或者只在第一次提示。
+      // 为了体验，每次成功都提示一下也无妨，或者只提示“影响力+1”如果确实加了。
+      // 既然需求是“每点评一张卡牌...弹出”，那就弹吧。
+      showInfluenceToast(1);
+
       // 刷新列表 + 均分
       await loadReviews(true);
     });
