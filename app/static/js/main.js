@@ -718,7 +718,7 @@ async function initCardsPage() {
       search: searchInput ? searchInput.value.trim() : "",
       sortBy: sortSelect ? sortSelect.value : "mana",
       sortOrder: sortOrder,
-      reviewed_by_me: reviewedFilter,
+      has_reviews: reviewedFilter,
       // 竞技场模式下直接用选中的版本筛选，不再传递所有版本
       arena_versions: "",
     };
@@ -919,7 +919,7 @@ async function initCardsPage() {
       cardsGrid.innerHTML = "";
     }
 
-    const { expansion, cardClass, rarity, search, sortBy, sortOrder, reviewed_by_me, arena_versions } = getFilters();
+    const { expansion, cardClass, rarity, search, sortBy, sortOrder, has_reviews, arena_versions } = getFilters();
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("page_size", String(pageSize));
@@ -930,7 +930,7 @@ async function initCardsPage() {
     if (search) params.append("search", search);
     if (sortBy) params.append("sort_by", sortBy);
     if (sortOrder) params.append("sort_order", sortOrder);
-    if (reviewed_by_me !== null) params.append("reviewed_by_me", String(reviewed_by_me));
+    if (has_reviews !== null) params.append("has_reviews", String(has_reviews));
 
     try {
       const res = await fetch(`/api/cards?${params.toString()}`);

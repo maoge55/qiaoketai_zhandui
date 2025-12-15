@@ -33,9 +33,9 @@ def list_cards(
     rarity: Optional[str] = Query(
         None, description="按稀有度过滤"
     ),
-    # ✅ 新增：已点评/未点评筛选
-    reviewed_by_me: Optional[bool] = Query(
-        None, description="筛选当前用户已点评/未点评"
+    # ✅ 新增：已点评/未点评筛选（是否有任意用户点评过）
+    has_reviews: Optional[bool] = Query(
+        None, description="筛选有点评/无点评的卡牌"
     ),
     # 模糊搜索
     search: Optional[str] = Query(
@@ -81,11 +81,14 @@ def list_cards(
     if rarity:
         query = query.filter(Card.rarity == rarity)
 
-    if reviewed_by_me is not None and current_user:
-        if reviewed_by_me:
-            query = query.filter(Card.reviews.any(CardReview.reviewer_id == current_user.id))
+    # 已点评/未点评筛选：是否有任意用户点评过
+    if has_reviews is not None:
+        if has_reviews:
+            # 有点评：只要存在任意点评即可
+            query = query.filter(Card.reviews.any())
         else:
-            query = query.filter(~Card.reviews.any(CardReview.reviewer_id == current_user.id))
+            # 无点评：没有任何点评
+            query = query.filter(~Card.reviews.any())
 
     if search:
         like = f"%{search}%"
