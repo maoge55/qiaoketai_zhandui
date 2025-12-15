@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # app/
 AVATAR_DIR = BASE_DIR / "static" / "avatars"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
-@router.get("/members", response_model=List[UserProfileOut])
+@router.get("/members")
 def list_members(
     page: int = 1,
     page_size: int = 12,
@@ -45,6 +45,9 @@ def list_members(
             )
         )
     )
+
+    # 先获取总数
+    total = q.count()
 
     # NULL 排到后面
     rank_is_null = case(
@@ -68,7 +71,14 @@ def list_members(
         .limit(page_size)
         .all()
     )
-    return profiles
+
+    # 返回带分页信息的响应
+    return {
+        "items": [UserProfileOut.from_orm(p) for p in profiles],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.get("/members/{user_id}")

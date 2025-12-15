@@ -2382,3 +2382,110 @@ body:has(#members-grid) .qk-container {
   border: 3px solid #b45309;
 }
 
+
+/* ===== 战队名册分页样式 ===== */
+.members-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.members-pagination .pagination-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.members-pagination .pagination-btn:hover:not(:disabled) {
+  background: rgba(255, 180, 50, 0.2);
+  border-color: rgba(255, 180, 50, 0.4);
+  color: #fcd34d;
+}
+
+.members-pagination .pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.members-pagination .pagination-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.members-pagination .pagination-num {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.members-pagination .pagination-num:hover {
+  background: rgba(255, 180, 50, 0.15);
+  border-color: rgba(255, 180, 50, 0.3);
+  color: #fcd34d;
+}
+
+.members-pagination .pagination-num.active {
+  background: linear-gradient(135deg, #ffb432, #d38c10);
+  border-color: #ffb432;
+  color: #000;
+  font-weight: 600;
+  cursor: default;
+}
+
+.members-pagination .pagination-info {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.members-pagination .pagination-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.members-pagination .pagination-jump input {
+  width: 60px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e5e7eb;
+  font-size: 14px;
+  text-align: center;
+}
+
+.members-pagination .pagination-jump input:focus {
+  outline: none;
+  border-color: rgba(255, 180, 50, 0.5);
+}
+
+.members-pagination .pagination-jump input::placeholder {
+  color: #6b7280;
+}
+
+.members-loading,
+.members-empty {
+  text-align: center;
+  padding: 32px;
+  color: #9ca3af;
+}
+

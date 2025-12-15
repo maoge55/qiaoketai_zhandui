@@ -228,11 +228,7 @@ document.addEventListener("click", async (e) => {
 });
 
 
-// ===== 战队名册：分页加载 & 触底刷新 =====
-let membersPage = 1;
-let membersPageSize = 12;
-let membersLoading = false;
-let membersFinished = false;
+// ===== 战队名册：分页加载 =====
 
 function buildMemberCard(profile) {
   const nickname =
@@ -293,50 +289,96 @@ function buildMemberCard(profile) {
   return card;
 }
 
+// ===== 战队名册分页模式 =====
+let membersCurrentPage = 1;
+let membersTotalPages = 1;
+const membersPageSizeNew = 12;
 
-async function loadMembersPage() {
+async function loadMembersPageData(page) {
   const grid = document.getElementById("members-grid");
   const loadingEl = document.getElementById("members-loading");
   const emptyEl = document.getElementById("members-empty");
+  const paginationEl = document.getElementById("members-pagination");
 
-  if (!grid || membersLoading || membersFinished) return;
+  if (!grid) return;
 
-  membersLoading = true;
   if (loadingEl) loadingEl.style.display = "block";
   if (emptyEl) emptyEl.style.display = "none";
+  grid.innerHTML = "";
 
   try {
     const res = await fetch(
-      `/api/members?page=${membersPage}&page_size=${membersPageSize}`
+      `/api/members?page=${page}&page_size=${membersPageSizeNew}`
     );
     const data = await res.json();
 
     if (!res.ok) {
       console.error("加载成员失败：", data);
-      membersFinished = true;
       return;
     }
 
-    if (Array.isArray(data) && data.length > 0) {
-      data.forEach((p) => {
+    const items = data.items || [];
+    const total = data.total || 0;
+    membersTotalPages = Math.ceil(total / membersPageSizeNew) || 1;
+    membersCurrentPage = page;
+
+    if (items.length > 0) {
+      items.forEach((p) => {
         grid.appendChild(buildMemberCard(p));
       });
-
-      membersPage += 1;
-      if (data.length < membersPageSize) {
-        membersFinished = true;
-      }
+      if (paginationEl) paginationEl.style.display = "flex";
+      updateMembersPagination();
     } else {
-      if (membersPage === 1 && emptyEl) {
-        emptyEl.style.display = "block";
-      }
-      membersFinished = true;
+      if (emptyEl) emptyEl.style.display = "block";
+      if (paginationEl) paginationEl.style.display = "none";
     }
   } catch (err) {
     console.error("加载成员出错：", err);
   } finally {
-    membersLoading = false;
     if (loadingEl) loadingEl.style.display = "none";
+  }
+}
+
+function updateMembersPagination() {
+  const pageNumbers = document.getElementById("members-page-numbers");
+  const pageInfo = document.getElementById("members-page-info");
+  const prevBtn = document.getElementById("members-prev");
+  const nextBtn = document.getElementById("members-next");
+
+  if (pageInfo) {
+    pageInfo.textContent = `第 ${membersCurrentPage} / ${membersTotalPages} 页`;
+  }
+
+  if (prevBtn) {
+    prevBtn.disabled = membersCurrentPage <= 1;
+  }
+  if (nextBtn) {
+    nextBtn.disabled = membersCurrentPage >= membersTotalPages;
+  }
+
+  if (pageNumbers) {
+    pageNumbers.innerHTML = "";
+    
+    // 计算显示的页码范围（最多显示5个）
+    let startPage = Math.max(1, membersCurrentPage - 2);
+    let endPage = Math.min(membersTotalPages, startPage + 4);
+    
+    // 调整起始页，确保显示5个（如果有足够页数）
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      const btn = document.createElement("button");
+      btn.className = "pagination-num" + (i === membersCurrentPage ? " active" : "");
+      btn.textContent = i;
+      btn.addEventListener("click", () => {
+        if (i !== membersCurrentPage) {
+          loadMembersPageData(i);
+        }
+      });
+      pageNumbers.appendChild(btn);
+    }
   }
 }
 
@@ -344,18 +386,51 @@ function initMembersPage() {
   const grid = document.getElementById("members-grid");
   if (!grid) return; // 不在战队名册页面
 
-  // 首次加载
-  loadMembersPage();
+  const prevBtn = document.getElementById("members-prev");
+  const nextBtn = document.getElementById("members-next");
+  const jumpBtn = document.getElementById("members-jump-btn");
+  const jumpInput = document.getElementById("members-jump-input");
 
-  // 触底刷新：滚动接近底部时继续加载
-  window.addEventListener("scroll", () => {
-    if (
-      window.innerHeight + window.scrollY >=
-      document.body.offsetHeight - 200
-    ) {
-      loadMembersPage();
-    }
-  });
+  // 首次加载
+  loadMembersPageData(1);
+
+  // 上一页
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => {
+      if (membersCurrentPage > 1) {
+        loadMembersPageData(membersCurrentPage - 1);
+      }
+    });
+  }
+
+  // 下一页
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      if (membersCurrentPage < membersTotalPages) {
+        loadMembersPageData(membersCurrentPage + 1);
+      }
+    });
+  }
+
+  // 跳转
+  if (jumpBtn && jumpInput) {
+    const doJump = () => {
+      const targetPage = parseInt(jumpInput.value, 10);
+      if (targetPage >= 1 && targetPage <= membersTotalPages) {
+        loadMembersPageData(targetPage);
+        jumpInput.value = "";
+      } else {
+        alert(`请输入 1 到 ${membersTotalPages} 之间的页码`);
+      }
+    };
+
+    jumpBtn.addEventListener("click", doJump);
+    jumpInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        doJump();
+      }
+    });
+  }
 }
 
 
