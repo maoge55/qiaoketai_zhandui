@@ -149,6 +149,10 @@ document.addEventListener("submit", async (e) => {
       return alert("请完整填写信息");
     }
 
+    if (username.length < 3) {
+      return alert("用户名至少需要3个字符");
+    }
+
     // 登录密码加密规则：用户名前三位 + 密码，然后 md5
     const prefix = username.slice(0, 3);
     const password_md5 = md5(prefix + password);
