@@ -2,8 +2,8 @@
 地下竞技场国服榜单 - 敲可爱战队500强
 """
 import httpx
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -16,6 +16,66 @@ router = APIRouter(prefix="/api/ua-rank", tags=["ua-rank"])
 # 暴雪API地址
 BLIZZARD_MODE_API = "https://webapi.blizzard.cn/hs-rank-api-server/api/v2/game/mode"
 BLIZZARD_RANKS_API = "https://webapi.blizzard.cn/hs-rank-api-server/api/game/ranks"
+
+# 缓存配置：10分钟更新一次
+CACHE_TTL_SECONDS = 600  # 10分钟
+
+# 全局缓存
+_leaderboard_cache: Dict[str, Any] = {
+    "data": None,
+    "last_updated": None,
+    "season_id": None,
+}
+
+# 影响力档位定义：档位越高奖励越多
+# 档位: (最大排名, 该档位奖励值)
+INFLUENCE_TIERS = [
+    (1, 100),    # 第1名: +100
+    (3, 60),     # 前3名: +60
+    (10, 30),    # 前10名: +30
+    (50, 20),    # 前50名: +20
+    (200, 10),   # 前200名: +10
+    (500, 5),    # 前500名: +5
+]
+
+
+def get_rank_tier(rank: int) -> int:
+    """
+    根据排名获取档位 (6=第1, 5=前3, 4=前10, 3=前50, 2=前200, 1=前500, 0=500名开外)
+    档位数字越大表示排名越靠前
+    """
+    if rank == 1:
+        return 6
+    elif rank <= 3:
+        return 5
+    elif rank <= 10:
+        return 4
+    elif rank <= 50:
+        return 3
+    elif rank <= 200:
+        return 2
+    elif rank <= 500:
+        return 1
+    else:
+        return 0
+
+
+def calculate_influence_gain(old_tier: int, new_tier: int) -> int:
+    """
+    计算从旧档位升到新档位应获得的影响力增量
+    档位对应奖励: 1=+5, 2=+10, 3=+20, 4=+30, 5=+60, 6=+100
+    """
+    tier_rewards = {1: 5, 2: 10, 3: 20, 4: 30, 5: 60, 6: 100}
+    
+    if new_tier <= old_tier:
+        return 0  # 没有提升或下降，不获得奖励
+    
+    # 累加从 old_tier+1 到 new_tier 的所有奖励
+    gain = 0
+    for tier in range(old_tier + 1, new_tier + 1):
+        gain += tier_rewards.get(tier, 0)
+    
+    return gain
 
 
 async def fetch_current_season_id() -> int:
@@ -68,7 +128,35 @@ async def fetch_all_ranks(season_id: int, max_pages: int = 20) -> List[dict]:
 async def get_current_season_leaderboard(db: Session = Depends(get_db)):
     """
     获取当前赛季地下竞技场国服榜单中的敲可爱战队成员
+    使用缓存，每10分钟更新一次
     """
+    global _leaderboard_cache
+    
+    now = datetime.utcnow()
+    
+    # 检查缓存是否有效
+    cache_valid = False
+    if _leaderboard_cache["last_updated"] and _leaderboard_cache["data"]:
+        age = (now - _leaderboard_cache["last_updated"]).total_seconds()
+        if age < CACHE_TTL_SECONDS:
+            cache_valid = True
+    
+    if cache_valid:
+        # 使用缓存数据
+        cached = _leaderboard_cache["data"]
+        last_updated = _leaderboard_cache["last_updated"]
+        next_update = last_updated + timedelta(seconds=CACHE_TTL_SECONDS)
+        seconds_until_update = max(0, int((next_update - now).total_seconds()))
+        
+        return {
+            **cached,
+            "cached": True,
+            "last_updated": last_updated.isoformat(),
+            "next_update": next_update.isoformat(),
+            "seconds_until_update": seconds_until_update,
+        }
+    
+    # 缓存过期或不存在，重新拉取数据
     # 1. 获取赛季ID
     try:
         season_id = await fetch_current_season_id()
@@ -131,13 +219,31 @@ async def get_current_season_leaderboard(db: Session = Depends(get_db)):
             # 5. 更新 user_profiles
             if profile:
                 # 更新当前赛季排名和分数
-                profile.current_season_rank = rank_data.get("position")
-                profile.current_season_score = rank_data.get("score")
-                
-                # 更新历史最佳排名（如果当前更好或为空）
                 current_rank = rank_data.get("position")
                 current_score = rank_data.get("score")
+                profile.current_season_rank = current_rank
+                profile.current_season_score = current_score
                 
+                # ========== 影响力计算 ==========
+                # 只有分数 >= 5000 才开始计算影响力
+                if current_score and current_score >= 5000:
+                    new_tier = get_rank_tier(current_rank)
+                    
+                    # 检查是否是新赛季（需要重置已获得档位）
+                    if profile.influence_claimed_season_id != season_id:
+                        profile.influence_claimed_season_id = season_id
+                        profile.influence_tier_claimed = 0
+                    
+                    old_tier = profile.influence_tier_claimed or 0
+                    
+                    # 如果当前档位比已获得档位更高，发放奖励
+                    if new_tier > old_tier:
+                        influence_gain = calculate_influence_gain(old_tier, new_tier)
+                        if influence_gain > 0:
+                            profile.influence = (profile.influence or 1) + influence_gain
+                            profile.influence_tier_claimed = new_tier
+                
+                # ========== 历史最佳排名更新 ==========
                 # arena_best_rank 是字符串格式，如 "前100"
                 if profile.arena_best_rank is None or profile.arena_best_rank == "":
                     profile.arena_best_rank = f"第{current_rank}名"
@@ -161,12 +267,28 @@ async def get_current_season_leaderboard(db: Session = Depends(get_db)):
     # 按排名排序
     matched_members.sort(key=lambda x: x["position"])
     
-    return {
+    # 构建返回数据
+    result_data = {
         "error": False,
         "season_id": season_id,
         "members": matched_members,
         "total": len(matched_members),
         "synced": True,
+    }
+    
+    # 更新缓存
+    _leaderboard_cache["data"] = result_data
+    _leaderboard_cache["last_updated"] = now
+    _leaderboard_cache["season_id"] = season_id
+    
+    next_update = now + timedelta(seconds=CACHE_TTL_SECONDS)
+    
+    return {
+        **result_data,
+        "cached": False,
+        "last_updated": now.isoformat(),
+        "next_update": next_update.isoformat(),
+        "seconds_until_update": CACHE_TTL_SECONDS,
     }
 
 

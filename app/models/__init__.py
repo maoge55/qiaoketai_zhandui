@@ -77,6 +77,10 @@ class UserProfile(Base):
     current_season_score = Column(Integer, nullable=True)
     # ✅ 新增：历史最高分数
     best_season_score = Column(Integer, nullable=True)
+    # ✅ 新增：已获得影响力奖励的赛季ID（用于判断是否新赛季重置）
+    influence_claimed_season_id = Column(Integer, nullable=True)
+    # ✅ 新增：当前赛季已获得的最高影响力档位 (0=无, 1=前500, 2=前200, 3=前50, 4=前10, 5=前3, 6=第1)
+    influence_tier_claimed = Column(Integer, nullable=True, default=0)
     user = relationship("User", back_populates="profile")
 
 

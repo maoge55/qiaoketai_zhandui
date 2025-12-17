@@ -2679,6 +2679,18 @@ body:has(#members-grid) .qk-container {
   font-weight: 600;
 }
 
+.ua-rank-stat.update-timer {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.ua-rank-stat.update-timer .value {
+  color: #10b981;
+  font-family: 'Courier New', monospace;
+  min-width: 50px;
+  text-align: center;
+}
+
 .ua-rank-admin {
   display: flex;
   justify-content: center;

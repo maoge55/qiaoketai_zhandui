@@ -13,6 +13,10 @@
         <span class="label">战队上榜</span>
         <span class="value"><span id="member-count">0</span> 人</span>
       </div>
+      <div class="ua-rank-stat update-timer">
+        <span class="label">下次更新</span>
+        <span class="value" id="update-countdown">--:--</span>
+      </div>
     </div>
     
     <!-- 管理员专属按钮 -->
@@ -67,6 +71,39 @@ document.addEventListener("DOMContentLoaded", async () => {
   const syncAllBtn = document.getElementById("btn-sync-all-seasons");
   const syncAllStatus = document.getElementById("sync-all-status");
   const errorTextEl = document.getElementById("error-text");
+  const countdownEl = document.getElementById("update-countdown");
+
+  let secondsUntilUpdate = 0;
+  let countdownTimer = null;
+
+  // 格式化倒计时
+  function formatCountdown(seconds) {
+    if (seconds <= 0) return "即将更新...";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // 启动倒计时
+  function startCountdown(seconds) {
+    secondsUntilUpdate = seconds;
+    countdownEl.textContent = formatCountdown(secondsUntilUpdate);
+    
+    if (countdownTimer) clearInterval(countdownTimer);
+    
+    countdownTimer = setInterval(() => {
+      secondsUntilUpdate--;
+      countdownEl.textContent = formatCountdown(secondsUntilUpdate);
+      
+      if (secondsUntilUpdate <= 0) {
+        clearInterval(countdownTimer);
+        // 倒计时结束，自动刷新数据
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+      }
+    }, 1000);
+  }
 
   // 获取排行榜数据
   try {
@@ -86,6 +123,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     statsEl.style.display = "flex";
     seasonIdEl.textContent = data.season_id;
     memberCountEl.textContent = data.total;
+
+    // 启动倒计时
+    if (data.seconds_until_update !== undefined) {
+      startCountdown(data.seconds_until_update);
+    }
 
     // 渲染表格
     const members = data.members || [];
