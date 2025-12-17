@@ -88,39 +88,60 @@ async def fetch_current_season_id() -> int:
         return int(season_id)
 
 
-async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25) -> List[dict]:
-    """获取指定赛季的排名数据（单页）"""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(
-            BLIZZARD_RANKS_API,
-            params={
-                "page": page,
-                "page_size": page_size,
-                "mode_name": "undergroundarena",
-                "season_id": season_id,
-            }
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        # 处理 data 为 None 的情况
-        inner_data = data.get("data") if data else None
-        if inner_data is None:
-            return []
-        return inner_data.get("list", [])
+async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25, max_retries: int = 3) -> List[dict]:
+    """获取指定赛季的排名数据（单页），支持重试"""
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    BLIZZARD_RANKS_API,
+                    params={
+                        "page": page,
+                        "page_size": page_size,
+                        "mode_name": "undergroundarena",
+                        "season_id": season_id,
+                    }
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                # 处理 data 为 None 的情况
+                inner_data = data.get("data") if data else None
+                if inner_data is None:
+                    return []
+                return inner_data.get("list", [])
+        except Exception as e:
+            if attempt < max_retries - 1:
+                # 等待后重试，指数退避
+                import asyncio
+                await asyncio.sleep(1 * (attempt + 1))
+                continue
+            else:
+                raise e
+    return []
 
 
-async def fetch_all_ranks(season_id: int, max_pages: int = 20) -> List[dict]:
-    """获取指定赛季的所有排名数据（1~max_pages页，最多500条）"""
+async def fetch_all_ranks(season_id: int, max_pages: int = 20, max_retries: int = 3) -> List[dict]:
+    """获取指定赛季的所有排名数据（1~max_pages页，最多500条），支持重试"""
+    import asyncio
     all_ranks = []
     for page in range(1, max_pages + 1):
-        try:
-            page_data = await fetch_ranks_page(season_id, page)
-            if not page_data:
-                break
-            all_ranks.extend(page_data)
-        except Exception as e:
-            print(f"获取第{page}页排名失败: {e}")
-            break
+        for attempt in range(max_retries):
+            try:
+                page_data = await fetch_ranks_page(season_id, page, max_retries=max_retries)
+                if not page_data:
+                    # 空数据，说明没有更多页了
+                    return all_ranks
+                all_ranks.extend(page_data)
+                break  # 成功，跳出重试循环
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"获取赛季{season_id}第{page}页失败(尝试{attempt+1}/{max_retries}): {e}")
+                    await asyncio.sleep(1 * (attempt + 1))
+                    continue
+                else:
+                    print(f"获取赛季{season_id}第{page}页最终失败: {e}")
+                    # 最后一次重试仍失败，返回已获取的数据
+                    return all_ranks
     return all_ranks
 
 
@@ -299,13 +320,24 @@ async def sync_all_seasons(
 ):
     """
     同步所有历史赛季成绩到 member_season_ranks 表
-    仅管理员可用
+    仅管理员可用，支持重试机制
     """
-    # 1. 获取当前赛季ID
-    try:
-        current_season_id = await fetch_current_season_id()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取赛季ID失败: {str(e)}")
+    import time
+    start_time = time.time()
+    
+    # 1. 获取当前赛季ID（带重试）
+    current_season_id = None
+    for attempt in range(5):
+        try:
+            current_season_id = await fetch_current_season_id()
+            break
+        except Exception as e:
+            if attempt < 4:
+                import asyncio
+                await asyncio.sleep(2 * (attempt + 1))
+                continue
+            else:
+                raise HTTPException(status_code=500, detail=f"获取赛季ID失败: {str(e)}")
     
     # 2. 获取所有战队成员
     members = (
@@ -327,65 +359,93 @@ async def sync_all_seasons(
     # 3. 遍历所有赛季（从1到当前赛季）
     total_synced = 0
     synced_seasons = []
+    failed_seasons = []
     
     for season_id in range(1, current_season_id + 1):
-        try:
-            # 每个赛季获取1~20页
-            all_ranks = await fetch_all_ranks(season_id, max_pages=20)
-            
-            if not all_ranks:
-                continue
-            
-            season_synced = 0
-            
-            for rank_data in all_ranks:
-                battle_tag = rank_data.get("battle_tag", "")
-                battle_tag_lower = battle_tag.lower()
+        # 每个赛季最多重试3次
+        season_success = False
+        for season_attempt in range(3):
+            try:
+                # 每个赛季获取1~20页（fetch_all_ranks 内部也有重试）
+                all_ranks = await fetch_all_ranks(season_id, max_pages=20, max_retries=3)
                 
-                user = name_to_user.get(battle_tag_lower)
-                if user:
-                    # 检查是否已存在记录
-                    existing = (
-                        db.query(MemberSeasonRank)
-                        .filter(
-                            MemberSeasonRank.user_id == user.id,
-                            MemberSeasonRank.season_id == season_id
-                        )
-                        .first()
-                    )
-                    
-                    if existing:
-                        # 更新
-                        existing.rank = rank_data.get("position")
-                        existing.score = rank_data.get("score")
-                        existing.updated_at = datetime.utcnow()
-                    else:
-                        # 插入
-                        new_record = MemberSeasonRank(
-                            user_id=user.id,
-                            season_id=season_id,
-                            rank=rank_data.get("position"),
-                            score=rank_data.get("score"),
-                        )
-                        db.add(new_record)
-                    
-                    season_synced += 1
-            
-            if season_synced > 0:
-                synced_seasons.append({"season_id": season_id, "count": season_synced})
-                total_synced += season_synced
+                if not all_ranks:
+                    season_success = True  # 空数据也算成功
+                    break
                 
-        except Exception as e:
-            print(f"同步赛季 {season_id} 失败: {e}")
-            continue
+                season_synced = 0
+                
+                for rank_data in all_ranks:
+                    battle_tag = rank_data.get("battle_tag", "")
+                    battle_tag_lower = battle_tag.lower()
+                    
+                    user = name_to_user.get(battle_tag_lower)
+                    if user:
+                        # 检查是否已存在记录
+                        existing = (
+                            db.query(MemberSeasonRank)
+                            .filter(
+                                MemberSeasonRank.user_id == user.id,
+                                MemberSeasonRank.season_id == season_id
+                            )
+                            .first()
+                        )
+                        
+                        if existing:
+                            # 更新
+                            existing.rank = rank_data.get("position")
+                            existing.score = rank_data.get("score")
+                            existing.updated_at = datetime.utcnow()
+                        else:
+                            # 插入
+                            new_record = MemberSeasonRank(
+                                user_id=user.id,
+                                season_id=season_id,
+                                rank=rank_data.get("position"),
+                                score=rank_data.get("score"),
+                            )
+                            db.add(new_record)
+                        
+                        season_synced += 1
+                
+                if season_synced > 0:
+                    synced_seasons.append({"season_id": season_id, "count": season_synced})
+                    total_synced += season_synced
+                
+                season_success = True
+                break  # 成功，跳出重试循环
+                    
+            except Exception as e:
+                print(f"同步赛季 {season_id} 失败(尝试{season_attempt+1}/3): {e}")
+                if season_attempt < 2:
+                    import asyncio
+                    await asyncio.sleep(2 * (season_attempt + 1))
+                    continue
+        
+        if not season_success:
+            failed_seasons.append(season_id)
     
     db.commit()
+    
+    end_time = time.time()
+    duration_seconds = round(end_time - start_time, 2)
+    
+    # 格式化耗时
+    if duration_seconds >= 60:
+        minutes = int(duration_seconds // 60)
+        seconds = int(duration_seconds % 60)
+        duration_str = f"{minutes}分{seconds}秒"
+    else:
+        duration_str = f"{duration_seconds}秒"
     
     return {
         "success": True,
         "total_synced": total_synced,
         "seasons": synced_seasons,
+        "failed_seasons": failed_seasons,
         "current_season_id": current_season_id,
+        "duration_seconds": duration_seconds,
+        "duration_str": duration_str,
     }
 
 

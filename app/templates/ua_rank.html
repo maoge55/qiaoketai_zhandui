@@ -179,7 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       syncAllBtn.classList.add("syncing");
       syncAllBtn.innerHTML = "⏳ 同步中...";
       syncAllStatus.style.display = "block";
-      syncAllStatus.textContent = "正在同步历史赛季数据，请稍候...";
+      syncAllStatus.textContent = "正在同步历史赛季数据，请稍候（自动重试失败请求）...";
 
       try {
         const res = await fetch("/api/ua-rank/sync-all-seasons", {
@@ -189,7 +189,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const data = await res.json();
 
         if (data.success) {
-          syncAllStatus.textContent = `✅ 同步完成！共同步 ${data.total_synced} 条记录，涉及 ${data.seasons.length} 个赛季`;
+          let msg = `✅ 同步完成！共同步 ${data.total_synced} 条记录，涉及 ${data.seasons.length} 个赛季，耗时 ${data.duration_str}`;
+          if (data.failed_seasons && data.failed_seasons.length > 0) {
+            msg += `（${data.failed_seasons.length} 个赛季失败）`;
+          }
+          syncAllStatus.textContent = msg;
           syncAllBtn.innerHTML = "✅ 同步完成";
         } else {
           syncAllStatus.textContent = `❌ 同步失败: ${data.detail || "未知错误"}`;
