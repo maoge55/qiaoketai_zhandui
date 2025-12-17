@@ -189,6 +189,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           headers: { "Content-Type": "application/json" },
         });
         
+        // 先检查HTTP状态码
+        if (!resp.ok) {
+          if (resp.status === 401) {
+            throw new Error("未登录，请先登录");
+          } else if (resp.status === 403) {
+            throw new Error("权限不足，需要管理员权限");
+          } else if (resp.status === 500) {
+            // 尝试读取错误详情
+            try {
+              const errData = await resp.json();
+              throw new Error(errData.detail || "服务器内部错误");
+            } catch {
+              throw new Error("服务器内部错误");
+            }
+          } else {
+            throw new Error(`请求失败 (${resp.status})`);
+          }
+        }
+        
         const result = await resp.json();
         
         if (result.success) {
