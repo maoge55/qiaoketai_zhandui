@@ -2621,3 +2621,340 @@ body:has(#members-grid) .qk-container {
   color: #6b7280;
 }
 
+
+/* ========================================
+   竞技场榜单页面 (ua-rank)
+======================================== */
+.ua-rank-page {
+  padding: 32px 0;
+}
+
+.ua-rank-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.ua-rank-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffb432;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.ua-rank-header h1::before,
+.ua-rank-header h1::after {
+  content: '⚔️';
+  font-size: 1.5rem;
+}
+
+.ua-rank-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.ua-rank-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 180, 50, 0.1);
+  border: 1px solid rgba(255, 180, 50, 0.3);
+  border-radius: 20px;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.ua-rank-stat .label {
+  color: #9ca3af;
+}
+
+.ua-rank-stat .value {
+  color: #ffb432;
+  font-weight: 600;
+}
+
+.ua-rank-admin {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.ua-rank-admin .btn-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ua-rank-admin .btn-sync:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.ua-rank-admin .btn-sync:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ua-rank-admin .btn-sync.syncing {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+}
+
+.ua-rank-table-wrap {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.ua-rank-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ua-rank-table th,
+.ua-rank-table td {
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ua-rank-table th {
+  background: rgba(255, 180, 50, 0.08);
+  font-weight: 600;
+  color: #ffb432;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ua-rank-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.ua-rank-table tbody tr:hover {
+  background: rgba(255, 180, 50, 0.05);
+}
+
+.ua-rank-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 排名列 */
+.ua-rank-col {
+  width: 80px;
+  text-align: center !important;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.rank-badge.rank-1 {
+  background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
+  color: #1a1a2e;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+  font-size: 18px;
+}
+
+.rank-badge.rank-2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%);
+  color: #1a1a2e;
+  box-shadow: 0 4px 12px rgba(192, 192, 192, 0.4);
+}
+
+.rank-badge.rank-3 {
+  background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+  color: #1a1a2e;
+  box-shadow: 0 4px 12px rgba(205, 127, 50, 0.4);
+}
+
+.rank-badge.rank-normal {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+/* 成员信息列 */
+.member-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.member-cell .avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  background-size: cover;
+  background-position: center;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.member-cell .avatar.rank-top3 {
+  border-color: #ffb432;
+  box-shadow: 0 0 12px rgba(255, 180, 50, 0.3);
+}
+
+.member-cell .info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.member-cell .nickname {
+  font-weight: 600;
+  color: #e5e7eb;
+  font-size: 15px;
+}
+
+.member-cell .nickname:hover {
+  color: #ffb432;
+}
+
+.member-cell .battle-tag {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* 分数列 */
+.score-cell {
+  font-weight: 600;
+  font-size: 16px;
+  color: #10b981;
+}
+
+.score-cell.top-score {
+  color: #ffb432;
+  font-size: 18px;
+}
+
+/* 空状态 */
+.ua-rank-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.ua-rank-empty .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.ua-rank-empty .text {
+  font-size: 16px;
+}
+
+/* 加载状态 */
+.ua-rank-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.ua-rank-loading .spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 180, 50, 0.2);
+  border-top-color: #ffb432;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.ua-rank-loading .text {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 同步进度 */
+.sync-progress {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .ua-rank-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .ua-rank-header h1::before,
+  .ua-rank-header h1::after {
+    display: none;
+  }
+
+  .ua-rank-stats {
+    gap: 12px;
+  }
+
+  .ua-rank-stat {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .ua-rank-table th,
+  .ua-rank-table td {
+    padding: 12px;
+  }
+
+  .ua-rank-col {
+    width: 60px;
+  }
+
+  .rank-badge {
+    min-width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .member-cell .avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .member-cell .nickname {
+    font-size: 14px;
+  }
+
+  .score-cell {
+    font-size: 14px;
+  }
+}

@@ -15,6 +15,7 @@ from app.routers import (
     card_reviews as card_reviews_router,
     pages as pages_router,
     uploads as uploads_router,
+    ua_rank as ua_rank_router,
 )
 
 # 确保建表（生产推荐用 Alembic 迁移）
@@ -39,5 +40,6 @@ app.include_router(admin_router.router)
 app.include_router(homepage_router.router)
 app.include_router(card_reviews_router.router)
 app.include_router(uploads_router.router)
+app.include_router(ua_rank_router.router)
 # 页面路由
 app.include_router(pages_router.router)

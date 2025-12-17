@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}地下竞技场国服榜 - 敲可爱战队{% endblock %}
+{% block content %}
+<div class="qk-container ua-rank-page">
+  <div class="ua-rank-header">
+    <h1>地下竞技场国服榜单</h1>
+    <div class="ua-rank-stats" id="ua-rank-stats" style="display:none;">
+      <div class="ua-rank-stat">
+        <span class="label">当前赛季</span>
+        <span class="value" id="season-id">-</span>
+      </div>
+      <div class="ua-rank-stat">
+        <span class="label">战队上榜</span>
+        <span class="value"><span id="member-count">0</span> 人</span>
+      </div>
+    </div>
+    
+    <!-- 管理员专属按钮 -->
+    {% if current_user and current_user.role.value in ['admin', 'super_admin'] %}
+    <div class="ua-rank-admin">
+      <button id="btn-sync-all-seasons" class="btn-sync">
+        🔄 同步所有历史赛季成绩
+      </button>
+    </div>
+    <div id="sync-all-status" class="sync-progress" style="display:none;"></div>
+    {% endif %}
+  </div>
+
+  <!-- 加载状态 -->
+  <div id="ua-rank-loading" class="ua-rank-loading">
+    <div class="spinner"></div>
+    <div class="text">正在获取赛季数据...</div>
+  </div>
+
+  <!-- 错误提示 -->
+  <div id="ua-rank-error" class="ua-rank-empty" style="display:none;">
+    <div class="icon">⚠️</div>
+    <div class="text" id="error-text">获取数据失败</div>
+  </div>
+
+  <!-- 数据表格 -->
+  <div id="ua-rank-content" class="ua-rank-table-wrap" style="display:none;">
+    <table class="ua-rank-table">
+      <thead>
+        <tr>
+          <th class="ua-rank-col">排名</th>
+          <th>战队成员</th>
+          <th>积分</th>
+        </tr>
+      </thead>
+      <tbody id="ua-rank-tbody">
+        <!-- 数据由 JS 动态填充 -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const loadingEl = document.getElementById("ua-rank-loading");
+  const errorEl = document.getElementById("ua-rank-error");
+  const contentEl = document.getElementById("ua-rank-content");
+  const statsEl = document.getElementById("ua-rank-stats");
+  const seasonIdEl = document.getElementById("season-id");
+  const memberCountEl = document.getElementById("member-count");
+  const tbodyEl = document.getElementById("ua-rank-tbody");
+  const syncAllBtn = document.getElementById("btn-sync-all-seasons");
+  const syncAllStatus = document.getElementById("sync-all-status");
+  const errorTextEl = document.getElementById("error-text");
+
+  // 获取排行榜数据
+  try {
+    const res = await fetch("/api/ua-rank/current-season");
+    const data = await res.json();
+
+    if (data.error) {
+      loadingEl.style.display = "none";
+      errorEl.style.display = "flex";
+      errorTextEl.textContent = data.message || "获取数据失败";
+      return;
+    }
+
+    // 显示数据
+    loadingEl.style.display = "none";
+    contentEl.style.display = "block";
+    statsEl.style.display = "flex";
+    seasonIdEl.textContent = data.season_id;
+    memberCountEl.textContent = data.total;
+
+    // 渲染表格
+    const members = data.members || [];
+    if (members.length === 0) {
+      tbodyEl.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:40px;color:#6b7280;">暂无战队成员上榜</td></tr>';
+    } else {
+      tbodyEl.innerHTML = members.map((m) => {
+        const rankClass = m.position <= 3 ? `rank-${m.position}` : "rank-normal";
+        const avatarClass = m.position <= 3 ? "avatar rank-top3" : "avatar";
+        const avatarStyle = m.avatar_url 
+          ? `background-image:url('${m.avatar_url}')` 
+          : "";
+        const scoreClass = m.position === 1 ? "score-cell top-score" : "score-cell";
+        return `
+          <tr>
+            <td class="ua-rank-col">
+              <span class="rank-badge ${rankClass}">${m.position}</span>
+            </td>
+            <td>
+              <div class="member-cell">
+                <a href="/members/${m.user_id}">
+                  <div class="${avatarClass}" style="${avatarStyle}"></div>
+                </a>
+                <div class="info">
+                  <a href="/members/${m.user_id}" class="nickname">${escapeHtml(m.battle_tag)}</a>
+                  ${m.nickname && m.nickname !== m.battle_tag ? `<span class="battle-tag">${escapeHtml(m.nickname)}</span>` : ""}
+                </div>
+              </div>
+            </td>
+            <td class="${scoreClass}">${m.score}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+  } catch (err) {
+    console.error(err);
+    loadingEl.style.display = "none";
+    errorEl.style.display = "flex";
+    errorTextEl.textContent = "网络错误，请稍后重试";
+  }
+
+  // 管理员同步所有赛季
+  if (syncAllBtn) {
+    syncAllBtn.addEventListener("click", async () => {
+      if (!confirm("确定要同步所有历史赛季成绩吗？这可能需要几分钟时间。")) return;
+      
+      syncAllBtn.disabled = true;
+      syncAllBtn.classList.add("syncing");
+      syncAllBtn.innerHTML = "⏳ 同步中...";
+      syncAllStatus.style.display = "block";
+      syncAllStatus.textContent = "正在同步历史赛季数据，请稍候...";
+
+      try {
+        const res = await fetch("/api/ua-rank/sync-all-seasons", {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          syncAllStatus.textContent = `✅ 同步完成！共同步 ${data.total_synced} 条记录，涉及 ${data.seasons.length} 个赛季`;
+          syncAllBtn.innerHTML = "✅ 同步完成";
+        } else {
+          syncAllStatus.textContent = `❌ 同步失败: ${data.detail || "未知错误"}`;
+          syncAllBtn.innerHTML = "❌ 同步失败";
+        }
+      } catch (err) {
+        console.error(err);
+        syncAllStatus.textContent = "❌ 网络错误，请稍后重试";
+        syncAllBtn.innerHTML = "❌ 网络错误";
+      } finally {
+        setTimeout(() => {
+          syncAllBtn.disabled = false;
+          syncAllBtn.classList.remove("syncing");
+          syncAllBtn.innerHTML = "🔄 同步所有历史赛季成绩";
+        }, 3000);
+      }
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+});
+</script>
+{% endblock %}

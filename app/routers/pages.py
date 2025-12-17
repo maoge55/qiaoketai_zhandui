@@ -206,6 +206,21 @@ async def members_page(
     )
 
 
+@router.get("/ua-rank", response_class=HTMLResponse)
+async def ua_rank_page(
+    request: Request,
+    current_user=Depends(get_current_user_from_cookie),
+):
+    """地下竞技场国服榜单 - 敲可爱战队500强"""
+    return templates.TemplateResponse(
+        "ua_rank.html",
+        {
+            "request": request,
+            "current_user": current_user,
+        },
+    )
+
+
 @router.get("/members/{user_id}", response_class=HTMLResponse)
 async def member_detail_page(
     user_id: int,

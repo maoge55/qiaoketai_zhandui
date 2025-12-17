@@ -233,3 +233,21 @@ class EmailVerificationCode(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
+
+
+class MemberSeasonRank(Base):
+    """战队成员历史榜单统计表"""
+    __tablename__ = "member_season_ranks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "season_id", name="uq_user_season"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    season_id = Column(Integer, nullable=False, index=True)
+    rank = Column(Integer, nullable=True)  # 最终排名
+    score = Column(Integer, nullable=True)  # 最终分数
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
