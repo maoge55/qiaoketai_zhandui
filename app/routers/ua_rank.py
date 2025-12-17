@@ -92,7 +92,7 @@ async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25, max_r
     """获取指定赛季的排名数据（单页），支持重试"""
     for attempt in range(max_retries):
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 resp = await client.get(
                     BLIZZARD_RANKS_API,
                     params={
