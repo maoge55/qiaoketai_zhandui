@@ -460,6 +460,81 @@ async def sync_all_seasons(
     }
 
 
+@router.post("/sync-season-client")
+async def sync_season_from_client(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_cookie),
+):
+    """
+    接收客户端提交的赛季数据并入库
+    客户端直接请求暴雪API后把数据POST过来
+    """
+    season_id = data.get("season_id")
+    ranks = data.get("ranks", [])
+    
+    if not season_id or not isinstance(ranks, list):
+        raise HTTPException(status_code=400, detail="参数错误")
+    
+    # 获取所有战队成员
+    members = (
+        db.query(User)
+        .filter(User.role.in_([
+            UserRole.MEMBER, UserRole.ELITE_MEMBER, 
+            UserRole.ADMIN, UserRole.SUPER_ADMIN
+        ]))
+        .all()
+    )
+    
+    # 构建 username/nickname -> user 的映射
+    name_to_user = {}
+    for m in members:
+        name_to_user[m.username.lower()] = m
+        if m.nickname:
+            name_to_user[m.nickname.lower()] = m
+    
+    synced_count = 0
+    
+    for rank_data in ranks:
+        battle_tag = rank_data.get("battle_tag", "")
+        battle_tag_lower = battle_tag.lower()
+        
+        user = name_to_user.get(battle_tag_lower)
+        if user:
+            # 检查是否已存在记录
+            existing = (
+                db.query(MemberSeasonRank)
+                .filter(
+                    MemberSeasonRank.user_id == user.id,
+                    MemberSeasonRank.season_id == season_id
+                )
+                .first()
+            )
+            
+            if existing:
+                existing.rank = rank_data.get("position")
+                existing.score = rank_data.get("score")
+                existing.updated_at = datetime.utcnow()
+            else:
+                new_record = MemberSeasonRank(
+                    user_id=user.id,
+                    season_id=season_id,
+                    rank=rank_data.get("position"),
+                    score=rank_data.get("score"),
+                )
+                db.add(new_record)
+            
+            synced_count += 1
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "season_id": season_id,
+        "synced_count": synced_count,
+    }
+
+
 @router.get("/history/{user_id}")
 async def get_user_season_history(
     user_id: int,
