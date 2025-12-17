@@ -882,8 +882,39 @@ a {
 }
 
 .cards-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  /* PC端一行显示6张卡牌 */
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+
+/* 响应式：中等屏幕一行4张 */
+@media (max-width: 1400px) {
+  .cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 响应式：小屏幕一行3张 */
+@media (max-width: 1024px) {
+  .cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 响应式：手机屏幕一行2张 */
+@media (max-width: 640px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+.cards-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px;
+  color: #9ca3af;
 }
 
 .card {
@@ -1680,21 +1711,22 @@ select.qk-input {
   display: flex;
   flex-direction: column;
   background: radial-gradient(circle at top, #111827, #020617);
+  padding: 12px;
 }
 
 .card-image-wrap {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem 1rem 0.5rem;
+  padding: 0.5rem 0.5rem 0.25rem;
 }
 
 .card-art {
   width: 100%;
   height: auto;
-  max-width: 320px; /* 原来是 260px */
+  max-width: 200px; /* 调小以适应6列布局 */
   object-fit: contain;
-  filter: drop-shadow(0 18px 25px rgba(0, 0, 0, 0.8));
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.8));
   transition: transform 0.2s ease, filter 0.2s ease;
 }
 
@@ -1705,14 +1737,14 @@ select.qk-input {
 }
 
 .cards-grid .card.card-eval .card-body {
-  padding: 0.75rem 1.1rem 1rem;
+  padding: 0.5rem 0.75rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
 .card-meta {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: #9ca3af;
 }
 
@@ -2487,5 +2519,105 @@ body:has(#members-grid) .qk-container {
   text-align: center;
   padding: 32px;
   color: #9ca3af;
+}
+
+
+/* ===== 卡牌评测分页样式 ===== */
+.cards-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.cards-pagination .pagination-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.cards-pagination .pagination-btn:hover:not(:disabled) {
+  background: rgba(255, 180, 50, 0.2);
+  border-color: rgba(255, 180, 50, 0.4);
+  color: #fcd34d;
+}
+
+.cards-pagination .pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cards-pagination .pagination-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.cards-pagination .pagination-num {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.cards-pagination .pagination-num:hover {
+  background: rgba(255, 180, 50, 0.15);
+  border-color: rgba(255, 180, 50, 0.3);
+  color: #fcd34d;
+}
+
+.cards-pagination .pagination-num.active {
+  background: linear-gradient(135deg, #ffb432, #d38c10);
+  border-color: #ffb432;
+  color: #000;
+  font-weight: 600;
+  cursor: default;
+}
+
+.cards-pagination .pagination-info {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.cards-pagination .pagination-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.cards-pagination .pagination-jump input {
+  width: 60px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e5e7eb;
+  font-size: 14px;
+  text-align: center;
+}
+
+.cards-pagination .pagination-jump input:focus {
+  outline: none;
+  border-color: rgba(255, 180, 50, 0.5);
+}
+
+.cards-pagination .pagination-jump input::placeholder {
+  color: #6b7280;
 }
 

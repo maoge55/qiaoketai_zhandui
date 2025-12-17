@@ -11,7 +11,7 @@ from app.schemas import CardOut
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
 
-@router.get("", response_model=List[CardOut])
+@router.get("")
 def list_cards(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user_from_cookie),
@@ -110,6 +110,9 @@ def list_cards(
     else:  # 默认按水晶排序
         query = query.order_by(direction(Card.mana_cost), Card.name.asc())
 
+    # 先获取总数（在分页之前）
+    total = query.count()
+
     rows = (
         query.offset((page - 1) * page_size)
         .limit(page_size)
@@ -180,7 +183,13 @@ def list_cards(
             )
         )
 
-    return result
+    # 返回带分页信息的响应
+    return {
+        "items": result,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 @router.get("/expansions", response_model=List[str])
 def list_versions(db: Session = Depends(get_db)):

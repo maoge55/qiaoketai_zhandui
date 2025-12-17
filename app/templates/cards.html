@@ -80,10 +80,18 @@
 
   <div id="cards-grid" class="qk-grid cards-grid"></div>
 
-  <div class="cards-more-wrapper">
-    <button id="cards-load-more" class="btn-secondary" style="display:none;">
-      加载更多
-    </button>
+  <!-- 分页控件 -->
+  <div class="cards-pagination" id="cards-pagination" style="display:none;">
+    <button class="pagination-btn" id="cards-prev">上一页</button>
+    <div class="pagination-numbers" id="cards-page-numbers">
+      <!-- 页码按钮由 JS 动态生成 -->
+    </div>
+    <button class="pagination-btn" id="cards-next">下一页</button>
+    <span class="pagination-info" id="cards-page-info">第 1 / 1 页</span>
+    <div class="pagination-jump">
+      <input type="number" id="cards-jump-input" min="1" placeholder="页码" />
+      <button class="pagination-btn" id="cards-jump-btn">跳转</button>
+    </div>
   </div>
 </div>
 {% endblock %}
