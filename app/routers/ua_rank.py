@@ -88,7 +88,7 @@ async def fetch_current_season_id() -> int:
         return int(season_id)
 
 
-async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25, max_retries: int = 3) -> List[dict]:
+async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25, max_retries: int = 5) -> List[dict]:
     """获取指定赛季的排名数据（单页），支持重试"""
     for attempt in range(max_retries):
         try:
