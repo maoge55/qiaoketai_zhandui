@@ -170,11 +170,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     errorTextEl.textContent = "网络错误，请稍后重试";
   }
 
-  // 管理员同步所有赛季（服务端请求暴雪API）
-  // 注：浏览器无法直接请求暴雪API（CORS限制），必须由服务端代为请求
+  // 管理员同步所有历史赛季（服务端请求暴雪API）
   if (syncAllBtn) {
     syncAllBtn.addEventListener("click", async () => {
-      if (!confirm("确定要同步所有历史赛季成绩吗？这可能需要几分钟时间。")) return;
+      if (!confirm("确定要同步所有历史赛季成绩吗？\n\n已同步的赛季会自动跳过。")) return;
       
       syncAllBtn.disabled = true;
       syncAllBtn.classList.add("syncing");
@@ -211,7 +210,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const result = await resp.json();
         
         if (result.success) {
-          let msg = `✅ 同步完成！共同步 ${result.total_synced} 条记录，涉及 ${result.seasons?.length || 0} 个赛季，耗时 ${result.duration_str}`;
+          let msg = `✅ 同步完成！共同步 ${result.total_synced} 条记录，涉及 ${result.seasons?.length || 0} 个新赛季`;
+          if (result.skipped_seasons > 0) {
+            msg += `，跳过 ${result.skipped_seasons} 个已同步赛季`;
+          }
+          msg += `，耗时 ${result.duration_str}`;
           if (result.failed_seasons && result.failed_seasons.length > 0) {
             msg += `（${result.failed_seasons.length} 个赛季失败）`;
           }

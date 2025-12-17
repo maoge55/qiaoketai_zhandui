@@ -330,8 +330,8 @@ async def sync_all_seasons(
     current_user: User = Depends(require_admin_cookie),
 ):
     """
-    同步所有历史赛季成绩到 member_season_ranks 表
-    仅管理员可用，支持重试机制
+    同步所有历史赛季成绩到 member_season_ranks 表（不含当前赛季）
+    仅管理员可用，跳过已同步的赛季
     """
     import time
     start_time = time.time()
@@ -360,24 +360,46 @@ async def sync_all_seasons(
         .all()
     )
     
+    if not members:
+        return {"success": True, "message": "无战队成员", "total_synced": 0}
+    
     # 构建 username/nickname -> user 的映射
     name_to_user = {}
+    member_ids = set()
     for m in members:
         name_to_user[m.username.lower()] = m
+        member_ids.add(m.id)
         if m.nickname:
             name_to_user[m.nickname.lower()] = m
     
-    # 3. 遍历所有赛季（从1到当前赛季）
+    # 3. 查询已同步的赛季（数据库中已有记录的赛季）
+    synced_season_ids = set(
+        row[0] for row in db.query(MemberSeasonRank.season_id)
+        .filter(MemberSeasonRank.user_id.in_(member_ids))
+        .distinct()
+        .all()
+    )
+    
+    # 4. 遍历历史赛季（从1到当前赛季-1，跳过已同步的）
     total_synced = 0
     synced_seasons = []
+    skipped_seasons = []
     failed_seasons = []
     
-    for season_id in range(1, current_season_id + 1):
+    # 只同步历史赛季（不含当前赛季）
+    max_season = current_season_id - 1
+    
+    for season_id in range(1, max_season + 1):
+        # 如果该赛季已有数据，跳过
+        if season_id in synced_season_ids:
+            skipped_seasons.append(season_id)
+            continue
+        
         # 每个赛季最多重试3次
         season_success = False
         for season_attempt in range(3):
             try:
-                # 每个赛季获取1~20页（fetch_all_ranks 内部也有重试）
+                # 每个赛季获取1~20页
                 all_ranks = await fetch_all_ranks(season_id, max_pages=20, max_retries=3)
                 
                 if not all_ranks:
@@ -392,39 +414,24 @@ async def sync_all_seasons(
                     
                     user = name_to_user.get(battle_tag_lower)
                     if user:
-                        # 检查是否已存在记录
-                        existing = (
-                            db.query(MemberSeasonRank)
-                            .filter(
-                                MemberSeasonRank.user_id == user.id,
-                                MemberSeasonRank.season_id == season_id
-                            )
-                            .first()
+                        # 插入新记录（已跳过已存在的赛季，所以这里直接插入）
+                        new_record = MemberSeasonRank(
+                            user_id=user.id,
+                            season_id=season_id,
+                            rank=rank_data.get("position"),
+                            score=rank_data.get("score"),
                         )
-                        
-                        if existing:
-                            # 更新
-                            existing.rank = rank_data.get("position")
-                            existing.score = rank_data.get("score")
-                            existing.updated_at = datetime.utcnow()
-                        else:
-                            # 插入
-                            new_record = MemberSeasonRank(
-                                user_id=user.id,
-                                season_id=season_id,
-                                rank=rank_data.get("position"),
-                                score=rank_data.get("score"),
-                            )
-                            db.add(new_record)
-                        
+                        db.add(new_record)
                         season_synced += 1
                 
                 if season_synced > 0:
                     synced_seasons.append({"season_id": season_id, "count": season_synced})
                     total_synced += season_synced
+                    # 每同步一个赛季就提交，避免长事务
+                    db.commit()
                 
                 season_success = True
-                break  # 成功，跳出重试循环
+                break
                     
             except Exception as e:
                 print(f"同步赛季 {season_id} 失败(尝试{season_attempt+1}/3): {e}")
@@ -435,8 +442,6 @@ async def sync_all_seasons(
         
         if not season_success:
             failed_seasons.append(season_id)
-    
-    db.commit()
     
     end_time = time.time()
     duration_seconds = round(end_time - start_time, 2)
@@ -453,6 +458,7 @@ async def sync_all_seasons(
         "success": True,
         "total_synced": total_synced,
         "seasons": synced_seasons,
+        "skipped_seasons": len(skipped_seasons),
         "failed_seasons": failed_seasons,
         "current_season_id": current_season_id,
         "duration_seconds": duration_seconds,
