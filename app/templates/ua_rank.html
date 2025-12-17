@@ -210,11 +210,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const result = await resp.json();
         
         if (result.success) {
-          let msg = `✅ 同步完成！共同步 ${result.total_synced} 条记录，涉及 ${result.seasons?.length || 0} 个新赛季`;
-          if (result.skipped_seasons > 0) {
-            msg += `，跳过 ${result.skipped_seasons} 个已同步赛季`;
-          }
-          msg += `，耗时 ${result.duration_str}`;
+          let msg = `✅ 同步完成！共同步 ${result.total_synced} 条记录，涉及 ${result.seasons?.length || 0} 个赛季（1~${result.max_season_synced}），耗时 ${result.duration_str}`;
           if (result.failed_seasons && result.failed_seasons.length > 0) {
             msg += `（${result.failed_seasons.length} 个赛季失败）`;
           }

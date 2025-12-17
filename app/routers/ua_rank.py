@@ -103,7 +103,7 @@ async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25, max_r
     """获取指定赛季的排名数据（单页），支持重试"""
     for attempt in range(max_retries):
         try:
-            async with httpx.AsyncClient(timeout=80.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 resp = await client.get(
                     BLIZZARD_RANKS_API,
                     params={
@@ -330,8 +330,8 @@ async def sync_all_seasons(
     current_user: User = Depends(require_admin_cookie),
 ):
     """
-    同步所有历史赛季成绩到 member_season_ranks 表（不含当前赛季）
-    仅管理员可用，跳过已同步的赛季
+    同步所有历史赛季成绩到 member_season_ranks 表（1 ~ 当前赛季-1）
+    仅管理员可用，支持重试机制
     """
     import time
     start_time = time.time()
@@ -365,42 +365,25 @@ async def sync_all_seasons(
     
     # 构建 username/nickname -> user 的映射
     name_to_user = {}
-    member_ids = set()
     for m in members:
         name_to_user[m.username.lower()] = m
-        member_ids.add(m.id)
         if m.nickname:
             name_to_user[m.nickname.lower()] = m
     
-    # 3. 查询已同步的赛季（数据库中已有记录的赛季）
-    synced_season_ids = set(
-        row[0] for row in db.query(MemberSeasonRank.season_id)
-        .filter(MemberSeasonRank.user_id.in_(member_ids))
-        .distinct()
-        .all()
-    )
-    
-    # 4. 遍历历史赛季（从1到当前赛季-1，跳过已同步的）
+    # 3. 遍历历史赛季（从1到当前赛季-1）
     total_synced = 0
     synced_seasons = []
-    skipped_seasons = []
     failed_seasons = []
     
-    # 只同步历史赛季（不含当前赛季）
     max_season = current_season_id - 1
     
     for season_id in range(1, max_season + 1):
-        # 如果该赛季已有数据，跳过
-        if season_id in synced_season_ids:
-            skipped_seasons.append(season_id)
-            continue
-        
-        # 每个赛季最多重试3次
+        # 每个赛季最多重试10次
         season_success = False
         for season_attempt in range(3):
             try:
                 # 每个赛季获取1~20页
-                all_ranks = await fetch_all_ranks(season_id, max_pages=20, max_retries=3)
+                all_ranks = await fetch_all_ranks(season_id, max_pages=20, max_retries=10)
                 
                 if not all_ranks:
                     season_success = True  # 空数据也算成功
@@ -414,14 +397,31 @@ async def sync_all_seasons(
                     
                     user = name_to_user.get(battle_tag_lower)
                     if user:
-                        # 插入新记录（已跳过已存在的赛季，所以这里直接插入）
-                        new_record = MemberSeasonRank(
-                            user_id=user.id,
-                            season_id=season_id,
-                            rank=rank_data.get("position"),
-                            score=rank_data.get("score"),
+                        # 检查是否已存在记录
+                        existing = (
+                            db.query(MemberSeasonRank)
+                            .filter(
+                                MemberSeasonRank.user_id == user.id,
+                                MemberSeasonRank.season_id == season_id
+                            )
+                            .first()
                         )
-                        db.add(new_record)
+                        
+                        if existing:
+                            # 更新
+                            existing.rank = rank_data.get("position")
+                            existing.score = rank_data.get("score")
+                            existing.updated_at = datetime.utcnow()
+                        else:
+                            # 插入
+                            new_record = MemberSeasonRank(
+                                user_id=user.id,
+                                season_id=season_id,
+                                rank=rank_data.get("position"),
+                                score=rank_data.get("score"),
+                            )
+                            db.add(new_record)
+                        
                         season_synced += 1
                 
                 if season_synced > 0:
@@ -458,9 +458,9 @@ async def sync_all_seasons(
         "success": True,
         "total_synced": total_synced,
         "seasons": synced_seasons,
-        "skipped_seasons": len(skipped_seasons),
         "failed_seasons": failed_seasons,
         "current_season_id": current_season_id,
+        "max_season_synced": max_season,
         "duration_seconds": duration_seconds,
         "duration_str": duration_str,
     }
