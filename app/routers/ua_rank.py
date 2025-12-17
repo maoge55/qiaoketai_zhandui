@@ -78,14 +78,25 @@ def calculate_influence_gain(old_tier: int, new_tier: int) -> int:
     return gain
 
 
-async def fetch_current_season_id() -> int:
-    """获取当前赛季ID"""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(BLIZZARD_MODE_API)
-        resp.raise_for_status()
-        data = resp.json()
-        season_id = data['data']['season_map']['undergroundarena'][0]['season_id']
-        return int(season_id)
+async def fetch_current_season_id(max_retries: int = 5) -> int:
+    """获取当前赛季ID，支持重试"""
+    import asyncio
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=80.0) as client:
+                resp = await client.get(BLIZZARD_MODE_API)
+                resp.raise_for_status()
+                data = resp.json()
+                season_id = data['data']['season_map']['undergroundarena'][0]['season_id']
+                return int(season_id)
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"获取赛季ID失败(尝试{attempt+1}/{max_retries}): {e}")
+                await asyncio.sleep(2 * (attempt + 1))
+                continue
+            else:
+                raise e
+    raise Exception("获取赛季ID失败")
 
 
 async def fetch_ranks_page(season_id: int, page: int, page_size: int = 25, max_retries: int = 5) -> List[dict]:
