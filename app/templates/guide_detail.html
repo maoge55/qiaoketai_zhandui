@@ -12,8 +12,9 @@
         </p>
       </div>
       <div class="guide-detail-actions">
-        {% if current_user and current_user.role.value in ['admin', 'super_admin'] %}
+        {% if current_user and (current_user.role.value in ['admin', 'super_admin'] or current_user.id == article.author_id) %}
         <a href="/guides/{{ article.id }}/edit" class="qk-btn qk-btn-outline qk-btn-sm">✏️ 编辑</a>
+        <button type="button" class="qk-btn qk-btn-outline qk-btn-sm btn-delete-guide" data-guide-id="{{ article.id }}">🗑️ 删除</button>
         {% endif %}
         <div class="qk-vote" id="guide-vote" data-guide-id="{{ article.id }}" data-current-action="{{ guide_current_user_action or '' }}">
           <button class="qk-vote-btn {% if guide_current_user_action=='up' %}is-active{% endif %}" type="button" data-action="up" aria-label="点赞">
@@ -49,6 +50,7 @@
     {% endif %}
   </section>
 </div>
+{% endblock %}
 
 {% block body_extra %}
 <script>
@@ -65,6 +67,30 @@
     downvoteCount: {{ article.downvote_count or 0 }},
     currentUser: {% if current_user %}{{ {'id': current_user.id, 'role': current_user.role.value} | tojson }}{% else %}null{% endif %}
   };
+
+  // 删除攻略按钮
+  document.addEventListener('DOMContentLoaded', function() {
+    const deleteBtn = document.querySelector('.btn-delete-guide');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async function() {
+        if (!confirm('确定要删除这篇攻略吗？')) return;
+        
+        const guideId = this.dataset.guideId;
+        try {
+          const res = await fetch(`/api/articles/${guideId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || '删除失败');
+          
+          alert('删除成功');
+          window.location.href = '/guides';
+        } catch (err) {
+          alert(err.message || '删除失败');
+        }
+      });
+    }
+  });
 </script>
-{% endblock %}
 {% endblock %}

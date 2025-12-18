@@ -1264,7 +1264,7 @@ async function initCardsPage() {
   const sortSelect = document.getElementById("cards-sort-by");
   const sortOrderBtn = document.getElementById("cards-sort-order");
   
-  // 分页控件
+  // 分页控件（底部）
   const paginationEl = document.getElementById("cards-pagination");
   const pageNumbersEl = document.getElementById("cards-page-numbers");
   const pageInfoEl = document.getElementById("cards-page-info");
@@ -1272,6 +1272,13 @@ async function initCardsPage() {
   const nextBtn = document.getElementById("cards-next");
   const jumpInput = document.getElementById("cards-jump-input");
   const jumpBtn = document.getElementById("cards-jump-btn");
+
+  // 分页控件（顶部）
+  const paginationElTop = document.getElementById("cards-pagination-top");
+  const pageNumbersElTop = document.getElementById("cards-page-numbers-top");
+  const pageInfoElTop = document.getElementById("cards-page-info-top");
+  const prevBtnTop = document.getElementById("cards-prev-top");
+  const nextBtnTop = document.getElementById("cards-next-top");
   
   // 新增：已点评/未点评筛选
   const btnFilterReviewed = document.getElementById("btn-filter-reviewed");
@@ -1528,12 +1535,14 @@ async function initCardsPage() {
         cardsGrid.innerHTML =
           '<p class="cards-empty">当前筛选条件下没有卡牌。</p>';
         if (paginationEl) paginationEl.style.display = "none";
+        if (paginationElTop) paginationElTop.style.display = "none";
       } else {
         const html = cards
           .map((card) => buildCardHtml(card, selectedClass))
           .join("");
         cardsGrid.innerHTML = html;
         if (paginationEl) paginationEl.style.display = "flex";
+        if (paginationElTop) paginationElTop.style.display = "flex";
         updateCardsPagination();
       }
     } catch (err) {
@@ -1544,21 +1553,23 @@ async function initCardsPage() {
     }
   }
 
-  // 更新分页控件
+  // 更新分页控件（同时更新上下两个）
   function updateCardsPagination() {
-    if (pageInfoEl) {
-      pageInfoEl.textContent = `第 ${currentPage} / ${totalPages} 页`;
-    }
+    // 更新页码信息文本
+    const infoText = `第 ${currentPage} / ${totalPages} 页`;
+    if (pageInfoEl) pageInfoEl.textContent = infoText;
+    if (pageInfoElTop) pageInfoElTop.textContent = infoText;
 
-    if (prevBtn) {
-      prevBtn.disabled = currentPage <= 1;
-    }
-    if (nextBtn) {
-      nextBtn.disabled = currentPage >= totalPages;
-    }
+    // 更新上下翻页按钮状态
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    if (prevBtnTop) prevBtnTop.disabled = currentPage <= 1;
+    if (nextBtnTop) nextBtnTop.disabled = currentPage >= totalPages;
 
-    if (pageNumbersEl) {
-      pageNumbersEl.innerHTML = "";
+    // 生成页码按钮的函数
+    function renderPageNumbers(container) {
+      if (!container) return;
+      container.innerHTML = "";
       
       // 计算显示的页码范围（最多显示5个）
       let startPage = Math.max(1, currentPage - 2);
@@ -1578,9 +1589,12 @@ async function initCardsPage() {
             loadCards(i);
           }
         });
-        pageNumbersEl.appendChild(btn);
+        container.appendChild(btn);
       }
     }
+
+    renderPageNumbers(pageNumbersEl);
+    renderPageNumbers(pageNumbersElTop);
   }
 
   // ---------- 事件监听 ----------
@@ -1589,7 +1603,7 @@ async function initCardsPage() {
   await loadArenaPoolVersions();
   await loadCards(1);
 
-  // 分页按钮事件
+  // 分页按钮事件（底部）
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
@@ -1600,6 +1614,23 @@ async function initCardsPage() {
 
   if (nextBtn) {
     nextBtn.addEventListener("click", () => {
+      if (currentPage < totalPages) {
+        loadCards(currentPage + 1);
+      }
+    });
+  }
+
+  // 分页按钮事件（顶部）
+  if (prevBtnTop) {
+    prevBtnTop.addEventListener("click", () => {
+      if (currentPage > 1) {
+        loadCards(currentPage - 1);
+      }
+    });
+  }
+
+  if (nextBtnTop) {
+    nextBtnTop.addEventListener("click", () => {
       if (currentPage < totalPages) {
         loadCards(currentPage + 1);
       }

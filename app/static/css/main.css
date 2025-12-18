@@ -1103,18 +1103,18 @@ a {
 }
 
 .cards-grid {
-  /* 自适应列数：每张卡最小 180px，自动铺满 */
+  /* 自适应列数：每张卡最小 200px，自动铺满 */
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
   width: 100%;
 }
 
 /* 响应式：手机屏幕间距缩小 */
 @media (max-width: 640px) {
   .cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
   }
 }
 
@@ -1940,7 +1940,7 @@ select.qk-input {
 .card-art {
   width: 100%;
   height: auto;
-  max-width: 200px; /* 调小以适应6列布局 */
+  max-width: 240px; /* 调大以显示更大的卡牠 */
   object-fit: contain;
   filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.8));
   transition: transform 0.2s ease, filter 0.2s ease;
@@ -2171,9 +2171,28 @@ select.qk-input {
 }
 
 .guide-card .meta {
-  color: var(--muted);
+  color: #94a3b8;
   font-size: 0.9rem;
   margin: 0 0 8px;
+}
+
+/* 攻略列表卡片样式 */
+.guide-card {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  padding: 18px 20px;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.guide-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.guide-card-head {
+  margin-bottom: 10px;
 }
 
 .guide-tags {
@@ -2515,11 +2534,12 @@ body:has(#members-grid) .qk-container {
 }
 
 .member-info-card {
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 16px;
-  padding: 18px;
-  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+  padding: 22px;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
 }
 
 .member-info-card .info-box p {
@@ -2541,9 +2561,10 @@ body:has(#members-grid) .qk-container {
 }
 
 .member-detail .card {
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
 }
 
 /* 成员详情页 - 攻略列表样式 */
@@ -2946,6 +2967,12 @@ body:has(#members-grid) .qk-container {
   gap: 12px;
   margin-top: 32px;
   flex-wrap: wrap;
+}
+
+/* 顶部分页控件 */
+.cards-pagination-top {
+  margin-top: 0;
+  margin-bottom: 24px;
 }
 
 .cards-pagination .pagination-btn {

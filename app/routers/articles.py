@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import or_, func, case
 from sqlalchemy.orm import Session
 
@@ -303,12 +303,37 @@ def update_article(
 
 
 @router.delete("/{article_id}")
-def delete_article(
-    article_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)
+async def delete_article(
+    article_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
 ):
+    """删除攻略（软删除），作者或管理员可操作"""
+    # 从 cookie 获取当前用户
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(401, "未登录")
+    
+    from app.utils.security import decode_access_token
+    token_data = decode_access_token(token)
+    if not token_data:
+        raise HTTPException(401, "无效或过期的 token")
+    
+    current_user = db.query(User).filter(User.id == token_data.user_id).first()
+    if not current_user:
+        raise HTTPException(401, "用户不存在")
+    
     article = db.query(Article).filter(Article.id == article_id).first()
     if not article:
         raise HTTPException(404, "文章不存在")
+    
+    # 检查权限：管理员或作者
+    is_admin = current_user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]
+    is_author = current_user.id == article.author_id
+    
+    if not (is_admin or is_author):
+        raise HTTPException(403, "仅作者或管理员可以删除攻略")
+    
     article.status = ArticleStatus.DELETED
     db.commit()
     return {"message": "删除成功"}

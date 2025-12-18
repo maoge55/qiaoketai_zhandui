@@ -384,21 +384,8 @@ async def edit_guide_page(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_from_cookie),
 ):
-    """编辑攻略页面，仅管理员可访问"""
-    if not current_user or current_user.role not in [
-        UserRole.ADMIN,
-        UserRole.SUPER_ADMIN,
-    ]:
-        return templates.TemplateResponse(
-            "error_403.html",
-            {
-                "request": request,
-                "message": "仅管理员可以编辑攻略",
-                "current_user": current_user,
-            },
-            status_code=403,
-        )
-    
+    """编辑攻略页面，管理员或作者可访问"""
+    # 先查询文章
     article = (
         db.query(Article)
         .filter(
@@ -415,6 +402,21 @@ async def edit_guide_page(
                 "current_user": current_user,
             },
             status_code=404,
+        )
+    
+    # 检查权限：管理员或作者
+    is_admin = current_user and current_user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]
+    is_author = current_user and current_user.id == article.author_id
+    
+    if not (is_admin or is_author):
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "仅作者或管理员可以编辑攻略",
+                "current_user": current_user,
+            },
+            status_code=403,
         )
     
     return templates.TemplateResponse(
