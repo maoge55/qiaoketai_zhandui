@@ -128,6 +128,68 @@ document.addEventListener("DOMContentLoaded", async () => {
   const errorTextEl = document.getElementById("error-text");
   const countdownEl = document.getElementById("update-countdown");
 
+  // ========== 处理从暴雪页面跳转回来的同步数据 ==========
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("sync") === "1") {
+    const syncData = localStorage.getItem("qk_sync_data");
+    if (syncData) {
+      // 显示同步中状态
+      const overlay = document.createElement("div");
+      overlay.id = "sync-overlay";
+      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font:18px sans-serif;";
+      overlay.innerHTML = "<div style='font-size:32px'>⏳</div><div id='sync-status' style='margin:15px'>正在上传数据到服务器...</div>";
+      document.body.appendChild(overlay);
+      const statusEl = document.getElementById("sync-status");
+      
+      try {
+        const payload = JSON.parse(syncData);
+        const resp = await fetch("/api/ua-rank/bookmarklet-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: syncData
+        });
+        const result = await resp.json();
+        
+        // 清除 localStorage 数据
+        localStorage.removeItem("qk_sync_data");
+        
+        if (result.success) {
+          overlay.style.background = "rgba(0,80,0,0.95)";
+          overlay.innerHTML = `
+            <div style='font-size:48px'>✅</div>
+            <div style='font-size:20px;margin:15px'>同步成功！</div>
+            <div>共同步 <b style='color:#4ade80'>${result.total_synced}</b> 条记录</div>
+            <div style='margin-top:10px;color:#a7f3d0'>涉及 ${result.seasons?.length || 0} 个赛季</div>
+            <div style='margin-top:30px;color:#888;font-size:14px'>3秒后自动刷新...</div>
+          `;
+          setTimeout(() => {
+            window.location.href = "/ua-rank";
+          }, 3000);
+        } else {
+          overlay.style.background = "rgba(120,0,0,0.95)";
+          overlay.innerHTML = `
+            <div style='font-size:48px'>❌</div>
+            <div style='font-size:20px;margin:15px'>同步失败</div>
+            <div>${result.detail || "未知错误"}</div>
+            <div style='margin-top:30px;color:#888;font-size:14px;cursor:pointer' onclick='location.href="/ua-rank"'>点击返回</div>
+          `;
+        }
+      } catch (e) {
+        localStorage.removeItem("qk_sync_data");
+        overlay.style.background = "rgba(120,0,0,0.95)";
+        overlay.innerHTML = `
+          <div style='font-size:48px'>❌</div>
+          <div style='font-size:20px;margin:15px'>上传失败</div>
+          <div>${e.message}</div>
+          <div style='margin-top:30px;color:#888;font-size:14px;cursor:pointer' onclick='location.href="/ua-rank"'>点击返回</div>
+        `;
+      }
+      return; // 阻止后续代码执行
+    }
+    // 没有数据则清除 URL 参数
+    window.history.replaceState({}, "", "/ua-rank");
+  }
+
   let secondsUntilUpdate = 0;
   let countdownTimer = null;
 
@@ -304,7 +366,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // 生成 bookmarklet 代码
   function generateBookmarkletCode(token) {
-    // 这段代码会在暴雪页面执行 - 简化版本避免浏览器限制
+    // 这段代码会在暴雪页面执行
+    // 由于混合内容限制(HTTPS->HTTP)，我们收集数据后跳转回我们的页面上传
     const code = `
 (function(){
   var T="${token}",S="${siteOrigin}",M="https://webapi.blizzard.cn/hs-rank-api-server/api/v2/game/mode",R="https://webapi.blizzard.cn/hs-rank-api-server/api/game/ranks";
@@ -326,13 +389,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     })(i);
     p.then(function(){
-      qs.textContent="上传中...";qp.textContent=all.length+"个赛季";
-      return fetch(S+"/api/ua-rank/bookmarklet-sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:T,seasons:all})});
-    }).then(function(r){return r.json()}).then(function(res){
-      if(res.success){d.style.background="rgba(0,80,0,.95)";d.innerHTML="<div style='font-size:48px'>✅</div><div style='font-size:20px;margin:15px'>同步成功！</div><div>共"+res.total_synced+"条记录</div><div style='margin-top:20px;color:#888;font-size:12px'>点击关闭</div>";}
-      else{d.style.background="rgba(120,0,0,.95)";d.innerHTML="<div style='font-size:48px'>❌</div><div style='font-size:20px;margin:15px'>同步失败</div><div>"+(res.detail||"未知错误")+"</div><div style='margin-top:20px;color:#888;font-size:12px'>点击关闭</div>";}
-      d.onclick=function(){d.remove()};setTimeout(function(){d.remove()},10000);
-    }).catch(function(e){d.style.background="rgba(120,0,0,.95)";d.innerHTML="<div style='font-size:48px'>❌</div><div style='margin:15px'>错误: "+e.message+"</div><div style='color:#888;font-size:12px'>点击关闭</div>";d.onclick=function(){d.remove()};});
+      qs.textContent="数据获取完成，正在跳转上传...";
+      qp.textContent=all.length+"个赛季";
+      var payload=JSON.stringify({token:T,seasons:all});
+      localStorage.setItem("qk_sync_data",payload);
+      window.location.href=S+"/ua-rank?sync=1";
+    });
   }).catch(function(e){d.innerHTML="<div style='font-size:48px'>❌</div><div style='margin:15px'>获取赛季失败: "+e.message+"</div>";d.onclick=function(){d.remove()};});
 })()
     `.trim();
