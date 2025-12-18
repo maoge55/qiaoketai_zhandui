@@ -2148,6 +2148,21 @@ select.qk-input {
   color: #e5e7eb;
   line-height: 1.6;
   margin-top: 6px;
+  /* 限制摘要高度，超出隐藏 */
+  max-height: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 攻略列表页图片缩略图样式（类似贴吧） */
+.guide-excerpt img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  float: left;
+  margin: 0 10px 6px 0;
+  flex-shrink: 0;
 }
 
 .guide-card h3 {
