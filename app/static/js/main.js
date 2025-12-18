@@ -164,10 +164,10 @@ function initCommentComposer() {
 }
 
 // 影响力 +1 动画
-function showInfluenceToast(points = 1) {
+function showInfluenceToast(points = 1, prefix = "作者影响力") {
   const toast = document.createElement("div");
   toast.className = "influence-toast";
-  toast.innerHTML = `影响力 +${points}`;
+  toast.innerHTML = `${prefix} +${points}`;
   document.body.appendChild(toast);
 
   // 强制重绘
@@ -1922,7 +1922,7 @@ async function initCardDetailPage() {
       // 由于后端没返回 flag，这里前端简单处理：总是提示，或者只在第一次提示。
       // 为了体验，每次成功都提示一下也无妨，或者只提示“影响力+1”如果确实加了。
       // 既然需求是“每点评一张卡牌...弹出”，那就弹吧。
-      showInfluenceToast(1);
+      showInfluenceToast(1, "我的影响力");
 
       // 刷新列表 + 均分
       await loadReviews(true);

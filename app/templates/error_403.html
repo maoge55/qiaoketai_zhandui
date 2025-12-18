@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}403 - 访问被拒绝{% endblock %}
+{% block content %}
+<div class="qk-container error-page">
+  <div class="error-content">
+    <div class="error-icon">🚫</div>
+    <h1 class="error-code">403</h1>
+    <h2 class="error-title">访问被拒绝</h2>
+    <p class="error-message">
+      抱歉，你没有权限访问此页面。<br>
+      可能需要登录或更高的权限才能查看。
+    </p>
+    <div class="error-actions">
+      <a href="/" class="qk-btn qk-btn-primary">返回首页</a>
+      {% if not current_user %}
+      <a href="/login" class="qk-btn qk-btn-outline">去登录</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.error-page {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.error-content {
+  max-width: 480px;
+}
+
+.error-icon {
+  font-size: 80px;
+  margin-bottom: 16px;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.error-code {
+  font-size: 120px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f87171 0%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  line-height: 1;
+}
+
+.error-title {
+  font-size: 28px;
+  color: #f1f5f9;
+  margin: 16px 0 12px;
+}
+
+.error-message {
+  font-size: 16px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.error-actions .qk-btn {
+  min-width: 120px;
+}
+</style>
+{% endblock %}
