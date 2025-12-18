@@ -4,8 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from app.dependencies.auth import get_db, require_elite_member, require_admin, get_current_user, require_member
-from app.models import Article, ArticleTag, ArticleStatus, User, UserRole
+from app.dependencies.auth import (
+    get_db,
+    require_elite_member,
+    require_admin,
+    get_current_user,
+    require_member,
+    get_current_user_from_cookie,
+)
+from app.models import Article, ArticleTag, ArticleStatus, User, UserRole, GuideVote
 from app.schemas import (
     ArticleCreate,
     ArticleUpdate,
@@ -59,6 +66,7 @@ def list_articles_paged(
     category: Optional[str] = None,
     tag: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_from_cookie),
 ):
     """攻略列表（带总数 & 筛选），用于前端分页/筛选 UI。"""
 
@@ -110,10 +118,25 @@ def list_articles_paged(
             .all()
         )
 
+    vote_map: dict[int, int] = {}
+    if current_user and ids:
+        rows = (
+            db.query(GuideVote.article_id, GuideVote.action_type)
+            .filter(
+                GuideVote.user_id == current_user.id,
+                GuideVote.article_id.in_(ids),
+            )
+            .all()
+        )
+        vote_map = {aid: act for aid, act in rows}
+
     result: List[ArticleListItem] = []
     for a in items:
         tags = [t.tag_name for t in a.tags]
         excerpt = (a.content[:120] + "...") if len(a.content) > 120 else a.content
+        current_action = None
+        if a.id in vote_map:
+            current_action = "up" if vote_map[a.id] == 1 else "down"
         result.append(
             ArticleListItem(
                 id=a.id,
@@ -122,6 +145,9 @@ def list_articles_paged(
                 author_nickname=a.author.nickname,
                 created_at=a.created_at,
                 tags=tags,
+                upvote_count=int(getattr(a, "upvote_count", 0) or 0),
+                downvote_count=int(getattr(a, "downvote_count", 0) or 0),
+                current_user_action=current_action,
             )
         )
 
@@ -158,6 +184,8 @@ def get_article(article_id: int, db: Session = Depends(get_db)):
         status=article.status,
         category=article.category,
         is_featured=article.is_featured,
+        upvote_count=int(getattr(article, "upvote_count", 0) or 0),
+        downvote_count=int(getattr(article, "downvote_count", 0) or 0),
         tags=[
             {"id": t.id, "tag_name": t.tag_name}
             for t in article.tags
@@ -208,6 +236,8 @@ def create_article(
         status=article.status,
         category=article.category,
         is_featured=article.is_featured,
+        upvote_count=int(getattr(article, "upvote_count", 0) or 0),
+        downvote_count=int(getattr(article, "downvote_count", 0) or 0),
         tags=[{"id": t.id, "tag_name": t.tag_name} for t in article.tags],
     )
 
@@ -259,6 +289,8 @@ def update_article(
         status=article.status,
         category=article.category,
         is_featured=article.is_featured,
+        upvote_count=int(getattr(article, "upvote_count", 0) or 0),
+        downvote_count=int(getattr(article, "downvote_count", 0) or 0),
         tags=[{"id": t.id, "tag_name": t.tag_name} for t in article.tags],
     )
 

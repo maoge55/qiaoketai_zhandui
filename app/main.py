@@ -9,6 +9,8 @@ from app.routers import (
     articles as articles_router,
     comments as comments_router,
     cards as cards_router,
+    votes as votes_router,
+    notifications as notifications_router,
     members as members_router,
     achievements as achievements_router,
     admin as admin_router,
@@ -53,6 +55,8 @@ app.include_router(achievements_router.router)
 app.include_router(admin_router.router)
 app.include_router(homepage_router.router)
 app.include_router(card_reviews_router.router)
+app.include_router(votes_router.router)
+app.include_router(notifications_router.router)
 app.include_router(uploads_router.router)
 app.include_router(ua_rank_router.router)
 # 页面路由

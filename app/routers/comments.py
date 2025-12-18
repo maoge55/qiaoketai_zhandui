@@ -5,8 +5,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.dependencies.auth import get_db, get_current_user
-from app.models import Comment, Article, UserRole
+from app.dependencies.auth import get_db, get_current_user_from_cookie_required
+from app.models import Comment, Article, UserRole, Notification
 from app.schemas import CommentCreate, CommentReplyCreate, CommentOut
 
 router = APIRouter(prefix="/api", tags=["comments"])
@@ -47,7 +47,7 @@ def list_comments(article_id: int, db: Session = Depends(get_db)):
 def create_comment(
     article_id: int,
     payload: CommentCreate,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user_from_cookie_required),
     db: Session = Depends(get_db),
 ):
     article = db.query(Article).filter(Article.id == article_id).first()
@@ -61,6 +61,20 @@ def create_comment(
         parent_id=None,
     )
     db.add(comment)
+
+    # 触发通知：评论文章作者（A!=B）
+    if article.author_id != current_user.id:
+        db.flush()  # 获取 comment.id
+        db.add(
+            Notification(
+                sender_id=current_user.id,
+                receiver_id=article.author_id,
+                article_id=article_id,
+                comment_id=comment.id,
+                is_read=False,
+            )
+        )
+
     db.commit()
     db.refresh(comment)
 
@@ -80,7 +94,7 @@ def create_comment(
 def reply_comment(
     comment_id: int,
     payload: CommentReplyCreate,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user_from_cookie_required),
     db: Session = Depends(get_db),
 ):
     parent = db.query(Comment).filter(Comment.id == comment_id).first()
@@ -94,6 +108,21 @@ def reply_comment(
         content=payload.content,
     )
     db.add(reply)
+
+    # 触发通知：评论文章作者（A!=B）
+    article = db.query(Article).filter(Article.id == parent.article_id).first()
+    if article and article.author_id != current_user.id:
+        db.flush()
+        db.add(
+            Notification(
+                sender_id=current_user.id,
+                receiver_id=article.author_id,
+                article_id=parent.article_id,
+                comment_id=reply.id,
+                is_read=False,
+            )
+        )
+
     db.commit()
     db.refresh(reply)
 
@@ -121,7 +150,7 @@ def _delete_comment_tree(db: Session, comment: Comment) -> None:
 @router.delete("/comments/{comment_id}")
 def delete_comment(
     comment_id: int,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user_from_cookie_required),
     db: Session = Depends(get_db),
 ):
     """删除评论（作者/文章作者/管理员）。"""
@@ -149,7 +178,7 @@ def delete_comment(
 def pin_comment(
     comment_id: int,
     payload: dict,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user_from_cookie_required),
     db: Session = Depends(get_db),
 ):
     """置顶/取消置顶（文章作者或管理员）。

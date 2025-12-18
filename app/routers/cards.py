@@ -42,10 +42,10 @@ def list_cards(
         None, description="模糊搜索卡牌名"
     ),
     sort_by: Optional[str] = Query(
-        "mana", description="排序字段：class|win|mana|score"
+        "score", description="排序字段：hot|class|win|mana|score"
     ),
     sort_order: str = Query(
-        "asc", regex="^(asc|desc)$", description="排序方向"
+        "desc", regex="^(asc|desc)$", description="排序方向"
     ),
     page: int = Query(1, ge=1),
     page_size: int = Query(30, ge=1, le=200),
@@ -60,9 +60,24 @@ def list_cards(
         .subquery()
     )
 
+    # 热门子查询：该卡牌所有点评点赞数总和
+    hot_sub = (
+        db.query(
+            CardReview.card_id.label("cid"),
+            func.coalesce(func.sum(CardReview.upvote_count), 0).label("hot_score"),
+        )
+        .group_by(CardReview.card_id)
+        .subquery()
+    )
+
     query = (
-        db.query(Card, avg_sub.c.avg_score.label("avg_score"))
+        db.query(
+            Card,
+            avg_sub.c.avg_score.label("avg_score"),
+            hot_sub.c.hot_score.label("hot_score"),
+        )
         .outerjoin(avg_sub, Card.id == avg_sub.c.cid)
+        .outerjoin(hot_sub, Card.id == hot_sub.c.cid)
     )
 
     # 竞技场卡池筛选（优先级高于普通版本筛选）
@@ -101,7 +116,9 @@ def list_cards(
     def nulls_last(expr):
         return case((expr.is_(None), 1), else_=0)
 
-    if sort_by == "class":
+    if sort_by == "hot":
+        query = query.order_by(nulls_last(hot_sub.c.hot_score), direction(hot_sub.c.hot_score), Card.name.asc())
+    elif sort_by == "class":
         query = query.order_by(direction(Card.card_class), Card.mana_cost.asc(), Card.name.asc())
     elif sort_by == "win":
         query = query.order_by(nulls_last(Card.arena_score), direction(Card.arena_score), Card.name.asc())
@@ -122,7 +139,9 @@ def list_cards(
     cards = []
     avg_map: dict[int, float | None] = {}
     for row in rows:
-        card, avg_score = row
+        # row: (Card, avg_score, hot_score)
+        card = row[0]
+        avg_score = row[1]
         cards.append(card)
         if avg_score is not None:
             avg_map[card.id] = float(avg_score)
@@ -132,21 +151,21 @@ def list_cards(
     top_map = {}
 
     if card_ids:
-        # 取影响力最高的点评（若影响力为空，则排在后面），用于列表页展示点评人和短评
-        influence_null_last = case((UserProfile.influence.is_(None), 1), else_=0)
+        # 取点赞数最高的点评（若点赞数为空则排在后面），用于列表页展示点评人和短评
+        upvote_null_last = case((CardReview.upvote_count.is_(None), 1), else_=0)
         top_reviews = (
             db.query(
                 CardReview.card_id,
                 CardReview.content,
                 User.nickname.label("nick"),
                 User.username.label("uname"),
-                UserProfile.influence,
+                CardReview.upvote_count,
                 CardReview.created_at,
             )
             .join(User, User.id == CardReview.reviewer_id)
             .outerjoin(UserProfile, UserProfile.user_id == User.id)
             .filter(CardReview.card_id.in_(card_ids))
-            .order_by(influence_null_last, UserProfile.influence.desc(), CardReview.created_at.desc())
+            .order_by(upvote_null_last, CardReview.upvote_count.desc(), CardReview.created_at.desc())
             .all()
         )
 

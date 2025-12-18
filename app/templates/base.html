@@ -31,6 +31,19 @@
       </nav>
       <div class="qk-user">
         {% if current_user %}
+        <div class="qk-notify" id="qk-notify">
+          <button class="qk-notify-btn" id="qk-notify-btn" type="button" aria-label="通知" aria-expanded="false">
+            🔔
+            <span class="qk-notify-badge" id="qk-notify-badge" style="display:none;">0</span>
+          </button>
+          <div class="qk-notify-panel" id="qk-notify-panel" style="display:none;" aria-label="通知列表">
+            <div class="qk-notify-panel-head">
+              <span>通知</span>
+            </div>
+            <div class="qk-notify-list" id="qk-notify-list"></div>
+            <div class="qk-notify-empty" id="qk-notify-empty" style="display:none;">暂无消息</div>
+          </div>
+        </div>
         <div class="qk-user-dropdown">
           <div class="avatar" tabindex="0" aria-label="用户菜单" {% if current_user.profile and
             current_user.profile.avatar_url %} style="background-image:url('{{ current_user.profile.avatar_url }}');" {%

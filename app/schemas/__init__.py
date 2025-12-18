@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Literal
 
 from pydantic import BaseModel, EmailStr
 
@@ -121,6 +121,8 @@ class ArticleOut(BaseModel):
     status: ArticleStatus
     category: Optional[str]
     is_featured: bool
+    upvote_count: int = 0
+    downvote_count: int = 0
     tags: List[ArticleTagOut]
 
     class Config:
@@ -134,6 +136,10 @@ class ArticleListItem(BaseModel):
     author_nickname: str
     created_at: datetime
     tags: List[str]
+    upvote_count: int = 0
+    downvote_count: int = 0
+    # up/down/None，用于前端高亮
+    current_user_action: Optional[Literal["up", "down"]] = None
 
     class Config:
         from_attributes = True
@@ -231,6 +237,9 @@ class CardReviewItem(BaseModel):
     content: str
     created_at: datetime
     game_version: Optional[str] = None
+    upvote_count: int = 0
+    downvote_count: int = 0
+    current_user_action: Optional[Literal["up", "down"]] = None
 
     class Config:
         from_attributes = True
@@ -245,6 +254,39 @@ class CardReviewsResponse(BaseModel):
     card_info: CardReviewCardInfo
     reviews: List[CardReviewItem]
     pagination: Pagination
+
+
+class VoteRequest(BaseModel):
+    action: Literal["up", "down"]
+
+
+class VoteResponse(BaseModel):
+    # added/switched/cancelled
+    action: str
+    current_action: Optional[Literal["up", "down"]] = None
+    upvote_count: int
+    downvote_count: int
+    # 仅攻略投票会返回
+    influence_changed: int = 0
+
+
+class UnreadCountResponse(BaseModel):
+    count: int
+
+
+class NotificationItem(BaseModel):
+    id: int
+    sender_id: int
+    sender_nickname: str
+    article_id: int
+    article_title: str
+    comment_id: int
+    is_read: bool
+    created_at: datetime
+
+
+class NotificationListResponse(BaseModel):
+    items: List[NotificationItem]
 
 
 

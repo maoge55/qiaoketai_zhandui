@@ -7,6 +7,7 @@ from sqlalchemy import (
     String,
     DateTime,
     Text,
+    UnicodeText,
     ForeignKey,
     Enum as SAEnum,
     Float,
@@ -105,6 +106,10 @@ class Article(Base):
     category = Column(String(50), nullable=True)
     is_featured = Column(Boolean, default=False)
 
+    # ✅ 攻略投票计数
+    upvote_count = Column(Integer, nullable=False, default=0)
+    downvote_count = Column(Integer, nullable=False, default=0)
+
     author = relationship("User", back_populates="articles")
     tags = relationship("ArticleTag", back_populates="article")
     comments = relationship("Comment", back_populates="article")
@@ -131,7 +136,8 @@ class Comment(Base):
     )
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
-    content = Column(Text, nullable=False)
+    # SQL Server 下使用 NVARCHAR(MAX) 以支持 Emoji/Unicode
+    content = Column(UnicodeText, nullable=False)
     # ✅ 新增：置顶
     is_pinned = Column(Boolean, nullable=False, default=False)
     pinned_at = Column(DateTime, nullable=True)
@@ -152,6 +158,10 @@ class CardReview(Base):
     content = Column(Text, nullable=False)
     game_version = Column(String(32), nullable=True)  # 例如 "29.2"
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # ✅ 点评投票计数
+    upvote_count = Column(Integer, nullable=False, default=0)
+    downvote_count = Column(Integer, nullable=False, default=0)
 
     card = relationship("Card", back_populates="reviews")
     reviewer = relationship("User")
@@ -255,3 +265,70 @@ class MemberSeasonRank(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User")
+
+
+class CardReviewVote(Base):
+    """用户对卡牌点评的点赞/拉踩状态（互斥）。"""
+
+    __tablename__ = "card_review_votes"
+    __table_args__ = (
+        UniqueConstraint("review_id", "user_id", name="uq_review_user_vote"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(
+        Integer,
+        ForeignKey("card_reviews.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+    # 1=up, -1=down
+    action_type = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class GuideVote(Base):
+    """用户对攻略文章的点赞/拉踩状态（互斥）。"""
+
+    __tablename__ = "guide_votes"
+    __table_args__ = (
+        UniqueConstraint("article_id", "user_id", name="uq_guide_user_vote"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    article_id = Column(
+        Integer,
+        ForeignKey("articles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+    # 1=up, -1=down
+    action_type = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Notification(Base):
+    """全局通知：评论触发，发送给文章作者。"""
+
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    article_id = Column(Integer, ForeignKey("articles.id"), nullable=False, index=True)
+    comment_id = Column(Integer, ForeignKey("comments.id"), nullable=False, index=True)
+    is_read = Column(Boolean, nullable=False, default=False)
+    read_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

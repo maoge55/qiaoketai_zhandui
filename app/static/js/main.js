@@ -47,6 +47,122 @@ function nl2br(text) {
   return escapeHtml(text).replace(/\n/g, "<br>");
 }
 
+// 贴吧表情（最小集）：用 SVG data URL 作为 <img>，避免新增静态资源
+const TIEBA_EMOTES = {
+  "[滑稽]": "😆",
+  "[捂脸]": "🤦",
+  "[点赞]": "👍",
+  "[生气]": "😠",
+  "[泪目]": "🥹",
+};
+
+function emoteToImgTag(emojiChar, alt) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><text x="50%" y="58%" text-anchor="middle" font-size="18">${emojiChar}</text></svg>`;
+  const src = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+  return `<img class="qk-emote" src="${src}" alt="${escapeHtml(alt)}" />`;
+}
+
+function renderCommentRichText(text) {
+  let html = escapeHtml(text || "");
+  Object.keys(TIEBA_EMOTES).forEach((code) => {
+    const emojiChar = TIEBA_EMOTES[code];
+    // code 里有 []，需要转义
+    const re = new RegExp(code.replace(/[\[\]]/g, "\\$&"), "g");
+    html = html.replace(re, emoteToImgTag(emojiChar, code));
+  });
+  return html.replace(/\n/g, "<br>");
+}
+
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const v = textarea.value || "";
+  textarea.value = v.slice(0, start) + text + v.slice(end);
+  const nextPos = start + text.length;
+  textarea.selectionStart = textarea.selectionEnd = nextPos;
+  textarea.focus();
+}
+
+function initCommentComposer() {
+  const textarea = document.getElementById("comment-content");
+  const btnEmoji = document.getElementById("btn-emoji");
+  const btnTieba = document.getElementById("btn-tieba");
+  if (!textarea || (!btnEmoji && !btnTieba)) return;
+
+  const host = textarea.closest(".comment-form") || textarea.parentElement;
+  if (!host) return;
+  host.style.position = "relative";
+
+  let panel = null;
+
+  function closePanel() {
+    if (panel) {
+      panel.remove();
+      panel = null;
+    }
+  }
+
+  function openPanel(type) {
+    closePanel();
+    panel = document.createElement("div");
+    panel.className = "qk-emote-panel";
+    panel.dataset.type = type;
+    panel.style.cssText = "position:absolute; left:0; right:0; bottom:58px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 10px; display:flex; flex-wrap:wrap; gap:8px; z-index: 50;";
+
+    if (type === "emoji") {
+      const emojis = ["😊", "😂", "😍", "🤔", "😎", "🔥", "✨", "🎉", "👍", "👎", "🥹", "😠"]; 
+      emojis.forEach((e) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "qk-emote-btn";
+        b.textContent = e;
+        b.addEventListener("click", () => {
+          insertAtCursor(textarea, e);
+          closePanel();
+        });
+        panel.appendChild(b);
+      });
+    } else {
+      Object.keys(TIEBA_EMOTES).forEach((code) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "qk-emote-btn";
+        b.innerHTML = `${emoteToImgTag(TIEBA_EMOTES[code], code)} <span class="qk-emote-code">${escapeHtml(code)}</span>`;
+        b.addEventListener("click", () => {
+          insertAtCursor(textarea, code);
+          closePanel();
+        });
+        panel.appendChild(b);
+      });
+    }
+
+    host.appendChild(panel);
+  }
+
+  if (btnEmoji) {
+    btnEmoji.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (panel && panel.dataset.type === "emoji") closePanel();
+      else openPanel("emoji");
+    });
+  }
+  if (btnTieba) {
+    btnTieba.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (panel && panel.dataset.type === "tieba") closePanel();
+      else openPanel("tieba");
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!panel) return;
+    if (panel.contains(e.target)) return;
+    if (btnEmoji && btnEmoji.contains(e.target)) return;
+    if (btnTieba && btnTieba.contains(e.target)) return;
+    closePanel();
+  });
+}
+
 // 影响力 +1 动画
 function showInfluenceToast(points = 1) {
   const toast = document.createElement("div");
@@ -208,16 +324,14 @@ document.addEventListener("click", async (e) => {
       .getElementById("comment-content")
       .value.trim();
     if (!content) return alert("请输入评论内容");
-    const token = getToken();
-    if (!token) return (window.location.href = "/login");
 
     const res = await fetch(`/api/articles/${articleId}/comments`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
       },
       body: JSON.stringify({ content }),
+      credentials: "same-origin",
     });
     const data = await res.json();
     if (!res.ok) return alert(data.detail || "评论失败");
@@ -491,6 +605,10 @@ function initGuidesPage() {
 
       const created = a.created_at ? new Date(a.created_at).toLocaleDateString() : "";
 
+      const up = Number(a.upvote_count || 0);
+      const down = Number(a.downvote_count || 0);
+      const currentAction = a.current_user_action || "";
+
       const card = document.createElement("div");
       card.className = "card guide-card";
       card.innerHTML = `
@@ -499,6 +617,16 @@ function initGuidesPage() {
           <div class="meta">作者：${escapeHtml(a.author_nickname || "未知")} · ${created}</div>
         </div>
         <div class="guide-excerpt"></div>
+        <div class="guide-item-actions">
+          <div class="qk-vote qk-guide-vote" data-guide-id="${a.id}" data-current-action="${escapeHtml(currentAction)}">
+            <button class="qk-vote-btn ${currentAction === "up" ? "is-active" : ""}" type="button" data-action="up" aria-label="点赞">
+              👍 <span class="qk-vote-count" data-role="up-count">${up}</span>
+            </button>
+            <button class="qk-vote-btn ${currentAction === "down" ? "is-active" : ""}" type="button" data-action="down" aria-label="拉踩">
+              👎 <span class="qk-vote-count" data-role="down-count">${down}</span>
+            </button>
+          </div>
+        </div>
         ${tagHtml ? `<div class="guide-tags">${tagHtml}</div>` : ""}
       `;
       const excerptEl = card.querySelector(".guide-excerpt");
@@ -529,7 +657,7 @@ function initGuidesPage() {
     if (c) params.set("category", c);
     if (t) params.set("tag", t);
 
-    const res = await fetch(`/api/articles/paged?${params.toString()}`);
+    const res = await fetch(`/api/articles/paged?${params.toString()}`, { credentials: "same-origin" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       listEl.innerHTML = `<div class="card"><p class="meta">加载失败：${escapeHtml(data.detail || "请稍后再试")}</p></div>`;
@@ -594,6 +722,74 @@ function initGuidesPage() {
     page = 1;
     load();
   });
+
+  // 攻略列表投票（乐观更新）
+  listEl.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest(".qk-guide-vote .qk-vote-btn");
+    if (!btn) return;
+    ev.preventDefault();
+
+    const root = btn.closest(".qk-guide-vote");
+    const guideId = root.dataset.guideId;
+    const action = btn.dataset.action;
+    const upEl = root.querySelector('[data-role="up-count"]');
+    const downEl = root.querySelector('[data-role="down-count"]');
+
+    const prevAction = root.dataset.currentAction || "";
+    const prevUp = Number(upEl.textContent || "0");
+    const prevDown = Number(downEl.textContent || "0");
+
+    let nextAction = prevAction;
+    let nextUp = prevUp;
+    let nextDown = prevDown;
+    if (prevAction === action) {
+      nextAction = "";
+      if (action === "up") nextUp = Math.max(0, prevUp - 1);
+      else nextDown = Math.max(0, prevDown - 1);
+    } else {
+      if (prevAction === "up") nextUp = Math.max(0, prevUp - 1);
+      if (prevAction === "down") nextDown = Math.max(0, prevDown - 1);
+      if (action === "up") nextUp += 1;
+      else nextDown += 1;
+      nextAction = action;
+    }
+
+    // optimistic
+    root.dataset.currentAction = nextAction;
+    upEl.textContent = String(nextUp);
+    downEl.textContent = String(nextDown);
+    root.querySelector('[data-action="up"]').classList.toggle("is-active", nextAction === "up");
+    root.querySelector('[data-action="down"]').classList.toggle("is-active", nextAction === "down");
+
+    try {
+      const res = await fetch(`/api/guides/${guideId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+        credentials: "same-origin",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "投票失败");
+
+      root.dataset.currentAction = data.current_action || "";
+      upEl.textContent = String(data.upvote_count ?? 0);
+      downEl.textContent = String(data.downvote_count ?? 0);
+      root.querySelector('[data-action="up"]').classList.toggle("is-active", data.current_action === "up");
+      root.querySelector('[data-action="down"]').classList.toggle("is-active", data.current_action === "down");
+
+      if (data.influence_changed && data.influence_changed > 0) {
+        showInfluenceToast(data.influence_changed);
+      }
+    } catch (err) {
+      // rollback
+      root.dataset.currentAction = prevAction;
+      upEl.textContent = String(prevUp);
+      downEl.textContent = String(prevDown);
+      root.querySelector('[data-action="up"]').classList.toggle("is-active", prevAction === "up");
+      root.querySelector('[data-action="down"]').classList.toggle("is-active", prevAction === "down");
+      alert(err.message || "投票失败");
+    }
+  });
 }
 
 
@@ -647,6 +843,7 @@ async function loadComments() {
     (byParent[parentId] || []).forEach((c) => {
       const div = document.createElement("div");
       div.className = "comment-item";
+      div.id = `comment-${c.id}`;
       div.style.marginLeft = indent + "px";
 
       const pinnedBadge = c.is_pinned && !c.parent_id ? `<span class="comment-pin-badge">置顶</span>` : "";
@@ -672,7 +869,7 @@ async function loadComments() {
           <span>${escapeHtml(c.user_nickname)}</span>
           <span>${new Date(c.created_at).toLocaleString()}</span>
         </div>
-        <div class="content">${nl2br(c.content)}</div>
+        <div class="content">${renderCommentRichText(c.content)}</div>
         <div class="comment-actions">${actions.join(" ")}</div>
       `;
       container.appendChild(div);
@@ -681,6 +878,18 @@ async function loadComments() {
   }
   container.innerHTML = "";
   renderList(0, 0);
+
+  // 跳转定位高亮：/guides/{id}?comment_id=123
+  const url = new URL(window.location.href);
+  const targetId = url.searchParams.get("comment_id");
+  if (targetId) {
+    const el = document.getElementById(`comment-${targetId}`);
+    if (el) {
+      el.classList.add("comment-highlight");
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => el.classList.remove("comment-highlight"), 2500);
+    }
+  }
 }
 
 document.addEventListener("click", async (e) => {
@@ -689,16 +898,13 @@ document.addEventListener("click", async (e) => {
     const parentId = e.target.dataset.id;
     const content = prompt("请输入回复内容：");
     if (!content) return;
-    const token = getToken();
-    if (!token) return (window.location.href = "/login");
-
     const res = await fetch(`/api/comments/${parentId}/reply`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
       },
       body: JSON.stringify({ content }),
+      credentials: "same-origin",
     });
     const data = await res.json();
     if (!res.ok) return alert(data.detail || "回复失败");
@@ -712,14 +918,9 @@ document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("btn-comment-delete")) {
     const id = e.target.dataset.id;
     if (!confirm("确定要删除这条评论吗？（会同时删除其回复）")) return;
-    const token = getToken();
-    if (!token) return (window.location.href = "/login");
-
     const res = await fetch(`/api/comments/${id}`, {
       method: "DELETE",
-      headers: {
-        Authorization: "Bearer " + token,
-      },
+      credentials: "same-origin",
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return alert(data.detail || "删除失败");
@@ -731,16 +932,13 @@ document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("btn-comment-pin")) {
     const id = e.target.dataset.id;
     const next = Number(e.target.dataset.next || "1") === 1;
-    const token = getToken();
-    if (!token) return (window.location.href = "/login");
-
     const res = await fetch(`/api/comments/${id}/pin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
       },
       body: JSON.stringify({ pinned: next }),
+      credentials: "same-origin",
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return alert(data.detail || "操作失败");
@@ -748,6 +946,265 @@ document.addEventListener("click", async (e) => {
     return;
   }
 });
+
+// ===== 攻略投票（列表/详情） =====
+async function initGuideVoting() {
+  const guideVoteRoot = document.getElementById("guide-vote");
+  if (!guideVoteRoot) return;
+
+  const guideId = guideVoteRoot.dataset.guideId;
+  const btnUp = guideVoteRoot.querySelector('[data-action="up"]');
+  const btnDown = guideVoteRoot.querySelector('[data-action="down"]');
+  const upCountEl = guideVoteRoot.querySelector('[data-role="up-count"]');
+  const downCountEl = guideVoteRoot.querySelector('[data-role="down-count"]');
+
+  let currentAction = guideVoteRoot.dataset.currentAction || null;
+
+  function setActive(action) {
+    btnUp.classList.toggle("is-active", action === "up");
+    btnDown.classList.toggle("is-active", action === "down");
+  }
+
+  async function postVote(action) {
+    // optimistic
+    const prevAction = currentAction;
+    const prevUp = Number(upCountEl.textContent || "0");
+    const prevDown = Number(downCountEl.textContent || "0");
+
+    // apply optimistic delta
+    let nextUp = prevUp;
+    let nextDown = prevDown;
+    if (prevAction === action) {
+      // cancel
+      if (action === "up") nextUp = Math.max(0, prevUp - 1);
+      else nextDown = Math.max(0, prevDown - 1);
+      currentAction = null;
+    } else {
+      // switch/add
+      if (prevAction === "up") nextUp = Math.max(0, prevUp - 1);
+      if (prevAction === "down") nextDown = Math.max(0, prevDown - 1);
+      if (action === "up") nextUp = nextUp + 1;
+      else nextDown = nextDown + 1;
+      currentAction = action;
+    }
+    upCountEl.textContent = String(nextUp);
+    downCountEl.textContent = String(nextDown);
+    setActive(currentAction);
+
+    try {
+      const res = await fetch(`/api/guides/${guideId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+        credentials: "same-origin",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "投票失败");
+
+      upCountEl.textContent = String(data.upvote_count ?? 0);
+      downCountEl.textContent = String(data.downvote_count ?? 0);
+      currentAction = data.current_action || null;
+      setActive(currentAction);
+      if (data.influence_changed && data.influence_changed > 0) {
+        showInfluenceToast(data.influence_changed);
+      }
+    } catch (err) {
+      // rollback
+      currentAction = prevAction;
+      upCountEl.textContent = String(prevUp);
+      downCountEl.textContent = String(prevDown);
+      setActive(currentAction);
+      alert(err.message || "投票失败");
+    }
+  }
+
+  btnUp.addEventListener("click", () => postVote("up"));
+  btnDown.addEventListener("click", () => postVote("down"));
+  setActive(currentAction);
+}
+
+// ===== 通知🔔 =====
+async function initNotifications() {
+  const btn = document.getElementById("qk-notify-btn");
+  const panel = document.getElementById("qk-notify-panel");
+  const badge = document.getElementById("qk-notify-badge");
+  const list = document.getElementById("qk-notify-list");
+  const empty = document.getElementById("qk-notify-empty");
+  if (!btn || !panel || !badge || !list || !empty) return;
+
+  let open = false;
+
+  function setBadge(n) {
+    const v = Number(n || 0);
+    if (v > 0) {
+      badge.style.display = "inline-flex";
+      badge.textContent = String(v);
+    } else {
+      badge.style.display = "none";
+      badge.textContent = "0";
+    }
+  }
+
+  async function refreshCount() {
+    try {
+      const res = await fetch("/api/notifications/unread_count", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setBadge(data.count || 0);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function renderItems(items) {
+    list.innerHTML = "";
+    if (!items || items.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+
+    items.forEach((it) => {
+      const row = document.createElement("a");
+      row.href = `/guides/${it.article_id}?comment_id=${it.comment_id}`;
+      row.className = "qk-notify-item" + (it.is_read ? "" : " is-unread");
+      row.dataset.nid = it.id;
+      row.dataset.articleId = it.article_id;
+      row.dataset.commentId = it.comment_id;
+      row.innerHTML = `
+        <div class="qk-notify-title">${escapeHtml(it.sender_nickname || "有人")} 评论了《${escapeHtml(it.article_title || "") }》</div>
+        <div class="qk-notify-time">${new Date(it.created_at).toLocaleString()}</div>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  async function refreshList() {
+    try {
+      const res = await fetch("/api/notifications?limit=20", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderItems(data.items || []);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    open = !open;
+    panel.style.display = open ? "block" : "none";
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      await refreshList();
+      await refreshCount();
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!open) return;
+    const wrap = document.getElementById("qk-notify");
+    if (wrap && !wrap.contains(e.target)) {
+      open = false;
+      panel.style.display = "none";
+      btn.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  list.addEventListener("click", async (e) => {
+    const a = e.target.closest(".qk-notify-item");
+    if (!a) return;
+    const nid = a.dataset.nid;
+    try {
+      await fetch(`/api/notifications/${nid}/read`, { method: "POST", credentials: "same-origin" });
+    } catch (err) {
+      // ignore
+    }
+    // 让浏览器正常跳转
+    open = false;
+    panel.style.display = "none";
+    btn.setAttribute("aria-expanded", "false");
+    setTimeout(refreshCount, 300);
+  });
+
+  // 初始拉一次未读数
+  refreshCount();
+}
+
+// ===== 点评投票（卡牌详情） =====
+async function initReviewVoting() {
+  const list = document.getElementById("card-review-list");
+  if (!list) return;
+
+  function setActive(root, action) {
+    const up = root.querySelector('[data-vote="up"]');
+    const down = root.querySelector('[data-vote="down"]');
+    if (up) up.classList.toggle("is-active", action === "up");
+    if (down) down.classList.toggle("is-active", action === "down");
+  }
+
+  async function postVote(reviewId, action, root) {
+    const upCountEl = root.querySelector('[data-role="up-count"]');
+    const downCountEl = root.querySelector('[data-role="down-count"]');
+    const prevAction = root.dataset.currentAction || "";
+    const prevUp = Number(upCountEl.textContent || "0");
+    const prevDown = Number(downCountEl.textContent || "0");
+
+    let nextAction = prevAction;
+    let nextUp = prevUp;
+    let nextDown = prevDown;
+
+    if (prevAction === action) {
+      nextAction = "";
+      if (action === "up") nextUp = Math.max(0, prevUp - 1);
+      else nextDown = Math.max(0, prevDown - 1);
+    } else {
+      if (prevAction === "up") nextUp = Math.max(0, prevUp - 1);
+      if (prevAction === "down") nextDown = Math.max(0, prevDown - 1);
+      if (action === "up") nextUp += 1;
+      else nextDown += 1;
+      nextAction = action;
+    }
+
+    // optimistic
+    root.dataset.currentAction = nextAction;
+    upCountEl.textContent = String(nextUp);
+    downCountEl.textContent = String(nextDown);
+    setActive(root, nextAction || null);
+
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+        credentials: "same-origin",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "投票失败");
+
+      root.dataset.currentAction = data.current_action || "";
+      upCountEl.textContent = String(data.upvote_count ?? 0);
+      downCountEl.textContent = String(data.downvote_count ?? 0);
+      setActive(root, data.current_action || null);
+    } catch (err) {
+      // rollback
+      root.dataset.currentAction = prevAction;
+      upCountEl.textContent = String(prevUp);
+      downCountEl.textContent = String(prevDown);
+      setActive(root, prevAction || null);
+      alert(err.message || "投票失败");
+    }
+  }
+
+  list.addEventListener("click", (e) => {
+    const btn = e.target.closest(".qk-review-vote-btn");
+    if (!btn) return;
+    const root = btn.closest(".qk-review-vote");
+    const reviewId = root.dataset.reviewId;
+    const action = btn.dataset.vote;
+    postVote(reviewId, action, root);
+  });
+}
 
 // 卡牌评测页面逻辑
 async function initCardsPage() {
@@ -800,7 +1257,7 @@ async function initCardsPage() {
       cardClass: classSelect ? classSelect.value : "",
       rarity: raritySelect ? raritySelect.value : "",
       search: searchInput ? searchInput.value.trim() : "",
-      sortBy: sortSelect ? sortSelect.value : "mana",
+      sortBy: sortSelect ? sortSelect.value : "score",
       sortOrder: sortOrder,
       has_reviews: reviewedFilter,
       // 竞技场模式下直接用选中的版本筛选，不再传递所有版本
@@ -1306,6 +1763,10 @@ async function initCardDetailPage() {
       ? `<button class="review-delete-btn" data-review-id="${r.review_id}" title="删除点评">🗑️</button>`
       : "";
 
+    const up = Number(r.upvote_count || 0);
+    const down = Number(r.downvote_count || 0);
+    const currentAction = r.current_user_action || "";
+
     return `
       <article class="card-review-item" data-review-id="${r.review_id}">
         <header class="review-header">
@@ -1330,6 +1791,14 @@ async function initCardDetailPage() {
         <div class="review-body">
           <p class="review-content collapsed">${contentSafe}</p>
           <button class="review-toggle" type="button">展开</button>
+        </div>
+        <div class="qk-review-vote" data-review-id="${r.review_id}" data-current-action="${escapeHtml(currentAction)}">
+          <button class="qk-review-vote-btn ${currentAction === "up" ? "is-active" : ""}" type="button" data-vote="up" aria-label="点赞">
+            👍 <span class="qk-vote-count" data-role="up-count">${up}</span>
+          </button>
+          <button class="qk-review-vote-btn ${currentAction === "down" ? "is-active" : ""}" type="button" data-vote="down" aria-label="拉踩">
+            👎 <span class="qk-vote-count" data-role="down-count">${down}</span>
+          </button>
         </div>
       </article>
     `;
@@ -1525,10 +1994,14 @@ async function initCardDetailPage() {
 // 简单全局初始化
 document.addEventListener("DOMContentLoaded", () => {
   loadComments();
+  initCommentComposer();
   initGuidesPage();
   initCardsPage();
   initCardDetailPage && initCardDetailPage();
   initMembersPage(); // ✅ 战队名册页面初始化
+  initGuideVoting();
+  initReviewVoting();
+  initNotifications();
 
   // 移动端菜单开关
   const menuBtn = document.getElementById("qk-menu-toggle");

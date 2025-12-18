@@ -12,6 +12,7 @@ from app.models import (
     AchievementStatus,
     Card,
     HomepageConfig,
+    GuideVote,
     User,
     UserProfile,
     UserRole,
@@ -373,12 +374,26 @@ async def guide_detail_page(
                 "current_user": current_user,
             },
         )
+
+    current_user_action = None
+    if current_user:
+        v = (
+            db.query(GuideVote)
+            .filter(
+                GuideVote.article_id == article_id,
+                GuideVote.user_id == current_user.id,
+            )
+            .first()
+        )
+        if v:
+            current_user_action = "up" if v.action_type == 1 else "down"
     return templates.TemplateResponse(
         "guide_detail.html",
         {
             "request": request,
             "current_user": current_user,
             "article": article,
+            "guide_current_user_action": current_user_action,
         },
     )
 

@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 
-from app.dependencies.auth import get_db, require_member
-from app.models import Card, CardReview, User, UserRole
+from app.dependencies.auth import get_db, require_member, get_current_user_from_cookie
+from app.models import Card, CardReview, User, UserRole, CardReviewVote
 from app.schemas import (
     CardReviewCardInfo,
     CardReviewItem,
@@ -141,13 +141,14 @@ def get_card_reviews(
     page_size: int = Query(10, ge=1, le=50),
     sort: str = Query(
         "time_desc",
-        description="排序方式：time_desc / time_asc / score_desc / score_asc",
+        description="排序方式：upvote_desc / time_desc / time_asc / score_desc / score_asc",
     ),
     min_score: Optional[float] = Query(None, ge=0.0, description="只看高分评价：最小分数"),
     latest_version_only: bool = Query(
         False, description="是否只看该卡牌最新版本的评价"
     ),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_from_cookie),
 ):
     # 1. 先拿到卡牌信息
     card = db.query(Card).filter(Card.id == card_id).first()
@@ -171,7 +172,9 @@ def get_card_reviews(
     total = query.count()
 
     # 3. 排序逻辑
-    if sort.startswith("time"):
+    if sort == "upvote_desc":
+        order_col = CardReview.upvote_count
+    elif sort.startswith("time"):
         order_col = CardReview.created_at
     else:
         order_col = CardReview.score
@@ -187,6 +190,20 @@ def get_card_reviews(
         .limit(page_size)
         .all()
     )
+
+    # 当前用户投票状态（用于前端高亮）
+    vote_map: dict[int, int] = {}
+    if current_user and reviews:
+        review_ids = [r.id for r in reviews]
+        rows = (
+            db.query(CardReviewVote.review_id, CardReviewVote.action_type)
+            .filter(
+                CardReviewVote.user_id == current_user.id,
+                CardReviewVote.review_id.in_(review_ids),
+            )
+            .all()
+        )
+        vote_map = {rid: act for rid, act in rows}
 
     # 4. 计算平均分
     avg_score = (
@@ -211,6 +228,10 @@ def get_card_reviews(
         # 简单规则：elite_member / admin 视为“专家”
         is_expert = u.role in (UserRole.ELITE_MEMBER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
 
+        current_action = None
+        if r.id in vote_map:
+            current_action = "up" if vote_map[r.id] == 1 else "down"
+
         review_items.append(
             CardReviewItem(
                 review_id=r.id,
@@ -223,6 +244,9 @@ def get_card_reviews(
                 content=r.content,
                 created_at=r.created_at,
                 game_version=r.game_version,
+                upvote_count=int(r.upvote_count or 0),
+                downvote_count=int(r.downvote_count or 0),
+                current_user_action=current_action,
             )
         )
 

@@ -3,11 +3,23 @@
 {% block content %}
 <div class="qk-container guide-detail">
   <article class="card">
-    <h1>{{ article.title }}</h1>
-    <p class="meta">
-      作者：{{ article.author.nickname if article.author else '未知' }}
-      · {{ article.created_at.strftime('%Y-%m-%d') }}
-    </p>
+    <div class="guide-detail-head">
+      <div style="flex:1; min-width: 0;">
+        <h1>{{ article.title }}</h1>
+        <p class="meta">
+          作者：{{ article.author.nickname if article.author else '未知' }}
+          · {{ article.created_at.strftime('%Y-%m-%d') }}
+        </p>
+      </div>
+      <div class="qk-vote" id="guide-vote" data-guide-id="{{ article.id }}" data-current-action="{{ guide_current_user_action or '' }}">
+        <button class="qk-vote-btn {% if guide_current_user_action=='up' %}is-active{% endif %}" type="button" data-action="up" aria-label="点赞">
+          👍 <span class="qk-vote-count" data-role="up-count">{{ article.upvote_count or 0 }}</span>
+        </button>
+        <button class="qk-vote-btn {% if guide_current_user_action=='down' %}is-active{% endif %}" type="button" data-action="down" aria-label="拉踩">
+          👎 <span class="qk-vote-count" data-role="down-count">{{ article.downvote_count or 0 }}</span>
+        </button>
+      </div>
+    </div>
     <div class="content">
       {{ article.content | safe }}
     </div>
@@ -18,9 +30,14 @@
     <div id="comments-list"></div>
     {% if current_user %}
     <div class="comment-form">
-      <textarea id="comment-content" placeholder="来一条有营养的评论吧～"></textarea>
-      <button class="qk-btn qk-btn-primary" id="btn-comment-submit"
-              data-article-id="{{ article.id }}">发表评论</button>
+      <textarea id="comment-content" class="qk-textarea qk-comment-input" placeholder="来一条有营养的评论吧～"></textarea>
+      <div class="qk-comment-toolbar">
+        <div class="qk-comment-tools">
+          <button class="qk-btn qk-btn-outline qk-btn-sm" id="btn-emoji" type="button">😊 Emoji</button>
+          <button class="qk-btn qk-btn-outline qk-btn-sm" id="btn-tieba" type="button">表情</button>
+        </div>
+        <button class="qk-btn qk-btn-primary" id="btn-comment-submit" data-article-id="{{ article.id }}">发表评论</button>
+      </div>
     </div>
     {% else %}
     <p>登录后才能评论哦～ <a href="/login">点击登录</a></p>
@@ -34,6 +51,13 @@
   window.QK_COMMENT_CTX = {
     articleId: {{ article.id }},
     articleAuthorId: {{ article.author_id }},
+    currentUser: {% if current_user %}{{ {'id': current_user.id, 'role': current_user.role.value} | tojson }}{% else %}null{% endif %}
+  };
+
+  window.QK_GUIDE_DETAIL = {
+    guideId: {{ article.id }},
+    upvoteCount: {{ article.upvote_count or 0 }},
+    downvoteCount: {{ article.downvote_count or 0 }},
     currentUser: {% if current_user %}{{ {'id': current_user.id, 'role': current_user.role.value} | tojson }}{% else %}null{% endif %}
   };
 </script>
