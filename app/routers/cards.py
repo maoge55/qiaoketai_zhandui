@@ -37,6 +37,10 @@ def list_cards(
     has_reviews: Optional[bool] = Query(
         None, description="筛选有点评/无点评的卡牌"
     ),
+    # ✅ 新增：筛选当前用户是否点评过（仅当前登录用户）
+    my_reviewed: Optional[bool] = Query(
+        None, description="筛选当前用户点评过/未点评过的卡牌"
+    ),
     # 模糊搜索
     search: Optional[str] = Query(
         None, description="模糊搜索卡牌名"
@@ -104,6 +108,15 @@ def list_cards(
         else:
             # 无点评：没有任何点评
             query = query.filter(~Card.reviews.any())
+
+    # 当前用户是否点评过筛选
+    if my_reviewed is not None and current_user:
+        if my_reviewed:
+            # 我点评过的：存在当前用户的点评
+            query = query.filter(Card.reviews.any(CardReview.reviewer_id == current_user.id))
+        else:
+            # 我未点评的：不存在当前用户的点评
+            query = query.filter(~Card.reviews.any(CardReview.reviewer_id == current_user.id))
 
     if search:
         like = f"%{search}%"

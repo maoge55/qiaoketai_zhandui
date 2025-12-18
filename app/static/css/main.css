@@ -1935,6 +1935,7 @@ select.qk-input {
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex: 1; /* 撑满卡片剩余空间 */
 }
 
 /* 卡片内容区各行紧凑间距 */
@@ -1955,8 +1956,16 @@ select.qk-input {
   margin-bottom: 1px;
 }
 
+/* 短评区域固定高度，内容溢出省略 */
 .cards-grid .card.card-eval .card-body .card-review {
   margin-bottom: 3px;
+  min-height: 2.7em;
+  max-height: 2.7em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
 }
 
 .card-meta {
@@ -2028,9 +2037,10 @@ select.qk-input {
   color: #9ca3af;
 }
 
-/* 列表卡片底部：点评人一行 + 按钮单独一行 */
+/* 列表卡片底部：点评人一行 + 按钮单独一行，始终在卡片底部 */
 .card-eval-footer {
-  margin-top: 4px;
+  margin-top: auto; /* 推到卡片底部 */
+  padding-top: 4px;
   display: flex;
   flex-direction: column;
   gap: 4px;

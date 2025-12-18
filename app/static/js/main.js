@@ -1259,7 +1259,8 @@ async function initCardsPage() {
       search: searchInput ? searchInput.value.trim() : "",
       sortBy: sortSelect ? sortSelect.value : "score",
       sortOrder: sortOrder,
-      has_reviews: reviewedFilter,
+      // 改为使用 my_reviewed 参数（当前用户是否点评过）
+      my_reviewed: reviewedFilter,
       // 竞技场模式下直接用选中的版本筛选，不再传递所有版本
       arena_versions: "",
     };
@@ -1453,7 +1454,7 @@ async function initCardsPage() {
     loading = true;
     cardsGrid.innerHTML = '<p class="cards-loading">加载中...</p>';
 
-    const { expansion, cardClass, rarity, search, sortBy, sortOrder, has_reviews, arena_versions } = getFilters();
+    const { expansion, cardClass, rarity, search, sortBy, sortOrder, my_reviewed, arena_versions } = getFilters();
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("page_size", String(pageSize));
@@ -1464,7 +1465,7 @@ async function initCardsPage() {
     if (search) params.append("search", search);
     if (sortBy) params.append("sort_by", sortBy);
     if (sortOrder) params.append("sort_order", sortOrder);
-    if (has_reviews !== null) params.append("has_reviews", String(has_reviews));
+    if (my_reviewed !== null) params.append("my_reviewed", String(my_reviewed));
 
     try {
       const res = await fetch(`/api/cards?${params.toString()}`);
