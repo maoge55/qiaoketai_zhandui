@@ -643,12 +643,19 @@ async def bookmarklet_sync(
         if m.nickname:
             name_to_user[m.nickname.lower()] = m
     
+    # 调试：记录成员信息
+    member_names = list(name_to_user.keys())
+    print(f"[bookmarklet-sync] 可匹配成员名: {member_names}")
+    
     total_synced = 0
     synced_seasons = []
+    all_battle_tags = []  # 调试用
     
     for season_item in seasons_data:
         season_id = season_item.get("season_id")
         ranks = season_item.get("ranks", [])
+        
+        print(f"[bookmarklet-sync] 赛季 {season_id}: 收到 {len(ranks)} 条排名")
         
         if not season_id or not ranks:
             continue
@@ -658,9 +665,11 @@ async def bookmarklet_sync(
         for rank_data in ranks:
             battle_tag = rank_data.get("battle_tag", "")
             battle_tag_lower = battle_tag.lower()
+            all_battle_tags.append(battle_tag_lower)
             
             user = name_to_user.get(battle_tag_lower)
             if user:
+                print(f"[bookmarklet-sync] 匹配成功: {battle_tag} -> user_id={user.id}")
                 existing = (
                     db.query(MemberSeasonRank)
                     .filter(
@@ -688,6 +697,10 @@ async def bookmarklet_sync(
         if season_synced > 0:
             synced_seasons.append({"season_id": season_id, "count": season_synced})
             total_synced += season_synced
+    
+    # 调试：打印所有收到的 battle_tag（前20个）
+    print(f"[bookmarklet-sync] 收到的 battle_tag 样例: {all_battle_tags[:20]}")
+    print(f"[bookmarklet-sync] 总共同步: {total_synced} 条")
     
     db.commit()
     
