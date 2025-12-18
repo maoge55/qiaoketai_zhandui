@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from app.database import engine
 from app.models import Base
@@ -22,6 +23,19 @@ from app.routers import (
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="敲可爱战队 - 炉石竞技场战队官网", version="0.1.0")
+
+# CORS 配置：允许暴雪榜单页面的跨域请求（用于 bookmarklet 同步）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://hs.blizzard.cn",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

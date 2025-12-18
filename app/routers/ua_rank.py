@@ -563,3 +563,140 @@ async def get_user_season_history(
         }
         for r in records
     ]
+
+
+# ========== Bookmarklet 同步接口 ==========
+# 用于从暴雪榜单页面跨域提交数据
+
+import secrets
+
+# 临时 token 存储（生产环境建议用 Redis）
+_sync_tokens: Dict[str, dict] = {}
+
+
+@router.post("/generate-sync-token")
+async def generate_sync_token(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_cookie),
+):
+    """
+    生成一个临时同步 token（有效期30分钟）
+    仅管理员可用
+    """
+    token = secrets.token_urlsafe(32)
+    _sync_tokens[token] = {
+        "user_id": current_user.id,
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(minutes=30),
+    }
+    
+    # 清理过期 token
+    now = datetime.utcnow()
+    expired = [k for k, v in _sync_tokens.items() if v["expires_at"] < now]
+    for k in expired:
+        del _sync_tokens[k]
+    
+    return {"token": token, "expires_in": 1800}
+
+
+@router.post("/bookmarklet-sync")
+async def bookmarklet_sync(
+    data: dict,
+    db: Session = Depends(get_db),
+):
+    """
+    接收 bookmarklet 从暴雪页面提交的数据
+    使用临时 token 认证（不依赖 cookie）
+    """
+    token = data.get("token")
+    seasons_data = data.get("seasons", [])
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="缺少认证 token")
+    
+    # 验证 token
+    token_info = _sync_tokens.get(token)
+    if not token_info:
+        raise HTTPException(status_code=401, detail="无效的 token")
+    
+    if datetime.utcnow() > token_info["expires_at"]:
+        del _sync_tokens[token]
+        raise HTTPException(status_code=401, detail="token 已过期")
+    
+    if not seasons_data or not isinstance(seasons_data, list):
+        raise HTTPException(status_code=400, detail="无有效数据")
+    
+    # 获取所有战队成员
+    members = (
+        db.query(User)
+        .filter(User.role.in_([
+            UserRole.MEMBER, UserRole.ELITE_MEMBER, 
+            UserRole.ADMIN, UserRole.SUPER_ADMIN
+        ]))
+        .all()
+    )
+    
+    # 构建 username/nickname -> user 的映射
+    name_to_user = {}
+    for m in members:
+        name_to_user[m.username.lower()] = m
+        if m.nickname:
+            name_to_user[m.nickname.lower()] = m
+    
+    total_synced = 0
+    synced_seasons = []
+    
+    for season_item in seasons_data:
+        season_id = season_item.get("season_id")
+        ranks = season_item.get("ranks", [])
+        
+        if not season_id or not ranks:
+            continue
+        
+        season_synced = 0
+        
+        for rank_data in ranks:
+            battle_tag = rank_data.get("battle_tag", "")
+            battle_tag_lower = battle_tag.lower()
+            
+            user = name_to_user.get(battle_tag_lower)
+            if user:
+                existing = (
+                    db.query(MemberSeasonRank)
+                    .filter(
+                        MemberSeasonRank.user_id == user.id,
+                        MemberSeasonRank.season_id == season_id
+                    )
+                    .first()
+                )
+                
+                if existing:
+                    existing.rank = rank_data.get("position")
+                    existing.score = rank_data.get("score")
+                    existing.updated_at = datetime.utcnow()
+                else:
+                    new_record = MemberSeasonRank(
+                        user_id=user.id,
+                        season_id=season_id,
+                        rank=rank_data.get("position"),
+                        score=rank_data.get("score"),
+                    )
+                    db.add(new_record)
+                
+                season_synced += 1
+        
+        if season_synced > 0:
+            synced_seasons.append({"season_id": season_id, "count": season_synced})
+            total_synced += season_synced
+    
+    db.commit()
+    
+    # 使用后删除 token（一次性）
+    if token in _sync_tokens:
+        del _sync_tokens[token]
+    
+    return {
+        "success": True,
+        "total_synced": total_synced,
+        "seasons": synced_seasons,
+    }

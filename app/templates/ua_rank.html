@@ -23,10 +23,65 @@
     {% if current_user and current_user.role.value in ['admin', 'super_admin'] %}
     <div class="ua-rank-admin">
       <button id="btn-sync-all-seasons" class="btn-sync">
-        🔄 同步所有历史赛季成绩
+        🔄 服务端同步历史赛季
+      </button>
+      <button id="btn-bookmarklet-sync" class="btn-sync btn-sync-alt">
+        📖 使用书签同步（推荐）
       </button>
     </div>
     <div id="sync-all-status" class="sync-progress" style="display:none;"></div>
+    
+    <!-- Bookmarklet 使用说明弹窗 -->
+    <div id="bookmarklet-modal" class="bookmarklet-modal" style="display:none;">
+      <div class="bookmarklet-modal-content">
+        <button class="bookmarklet-close" id="bookmarklet-close">&times;</button>
+        <h3>📖 使用书签同步历史赛季</h3>
+        <p class="bookmarklet-desc">由于网络限制，服务器无法直接访问暴雪API。您可以使用浏览器书签小程序来同步数据。</p>
+        
+        <div class="bookmarklet-steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <div class="step-content">
+              <strong>生成同步令牌</strong>
+              <p>点击下方按钮生成一次性令牌（30分钟内有效）</p>
+              <button id="btn-gen-token" class="btn-sync">生成令牌</button>
+              <div id="token-display" style="display:none;">
+                <code id="sync-token"></code>
+                <span class="token-status">✅ 已生成</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-num">2</span>
+            <div class="step-content">
+              <strong>创建书签</strong>
+              <p>将下方链接拖到书签栏，或右键添加为书签：</p>
+              <a id="bookmarklet-link" class="bookmarklet-drag" href="javascript:void(0);">
+                🔄 同步敲可爱榜单
+              </a>
+              <p class="hint">（请先生成令牌，书签代码会自动更新）</p>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-num">3</span>
+            <div class="step-content">
+              <strong>打开暴雪榜单页面</strong>
+              <p>访问 <a href="https://hs.blizzard.cn/community/leaderboards/" target="_blank">hs.blizzard.cn/community/leaderboards/</a></p>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-num">4</span>
+            <div class="step-content">
+              <strong>点击书签执行同步</strong>
+              <p>在暴雪页面上点击刚才创建的书签，等待同步完成</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
   </div>
 
@@ -229,10 +284,192 @@ document.addEventListener("DOMContentLoaded", async () => {
         setTimeout(() => {
           syncAllBtn.disabled = false;
           syncAllBtn.classList.remove("syncing");
-          syncAllBtn.innerHTML = "🔄 同步所有历史赛季成绩";
+          syncAllBtn.innerHTML = "🔄 服务端同步历史赛季";
         }, 3000);
       }
     });
+  }
+
+  // ========== Bookmarklet 同步功能 ==========
+  const bookmarkletBtn = document.getElementById("btn-bookmarklet-sync");
+  const bookmarkletModal = document.getElementById("bookmarklet-modal");
+  const bookmarkletClose = document.getElementById("bookmarklet-close");
+  const btnGenToken = document.getElementById("btn-gen-token");
+  const tokenDisplay = document.getElementById("token-display");
+  const syncTokenEl = document.getElementById("sync-token");
+  const bookmarkletLink = document.getElementById("bookmarklet-link");
+  
+  // 当前网站地址（用于 bookmarklet）
+  const siteOrigin = window.location.origin;
+  
+  // 生成 bookmarklet 代码
+  function generateBookmarkletCode(token) {
+    // 这段代码会在暴雪页面执行
+    const code = `
+(async function(){
+  const TOKEN = "${token}";
+  const SERVER = "${siteOrigin}";
+  const MODE_API = "https://webapi.blizzard.cn/hs-rank-api-server/api/v2/game/mode";
+  const RANKS_API = "https://webapi.blizzard.cn/hs-rank-api-server/api/game/ranks";
+  
+  try {
+    // 显示进度
+    const div = document.createElement("div");
+    div.id = "qk-sync-overlay";
+    div.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:18px;font-family:system-ui,-apple-system,sans-serif;";
+    div.innerHTML = "<div id='qk-icon' style='font-size:48px;margin-bottom:20px;animation:spin 1s linear infinite;'>⚙️</div><style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}</style><div style='font-size:24px;font-weight:bold;margin-bottom:15px;'>敲可爱战队同步工具</div><div id='qk-status' style='font-size:16px;'>正在获取赛季信息...</div><div id='qk-progress' style='margin-top:12px;color:#aaa;font-size:14px;'></div><div id='qk-close-hint' style='margin-top:30px;color:#666;font-size:12px;display:none;'>点击任意位置关闭</div>";
+    document.body.appendChild(div);
+    const iconEl = document.getElementById("qk-icon");
+    const status = document.getElementById("qk-status");
+    const progress = document.getElementById("qk-progress");
+    const closeHint = document.getElementById("qk-close-hint");
+    
+    // 获取当前赛季ID
+    const modeResp = await fetch(MODE_API);
+    const modeData = await modeResp.json();
+    const currentSeasonId = modeData.data.season_map.undergroundarena[0].season_id;
+    const maxSeason = currentSeasonId - 1;
+    
+    status.textContent = "当前赛季: " + currentSeasonId + "，开始同步历史赛季...";
+    
+    // 遍历赛季
+    const allData = [];
+    for (let sid = 1; sid <= maxSeason; sid++) {
+      progress.textContent = "正在获取赛季 " + sid + "/" + maxSeason + "...";
+      const ranks = [];
+      for (let page = 1; page <= 20; page++) {
+        try {
+          const resp = await fetch(RANKS_API + "?page=" + page + "&page_size=25&mode_name=undergroundarena&season_id=" + sid);
+          const data = await resp.json();
+          const list = data?.data?.list || [];
+          if (!list.length) break;
+          ranks.push(...list);
+        } catch (e) { break; }
+      }
+      if (ranks.length > 0) {
+        allData.push({ season_id: sid, ranks: ranks });
+      }
+    }
+    
+    status.textContent = "数据获取完成，正在上传到服务器...";
+    progress.textContent = "共 " + allData.length + " 个赛季";
+    
+    // 发送到服务器
+    const syncResp = await fetch(SERVER + "/api/ua-rank/bookmarklet-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: TOKEN, seasons: allData })
+    });
+    const result = await syncResp.json();
+    
+    // 停止旋转动画
+    iconEl.style.animation = "none";
+    
+    if (result.success) {
+      iconEl.textContent = "✅";
+      iconEl.style.animation = "pulse 0.5s ease-in-out";
+      div.style.background = "rgba(0,80,0,0.95)";
+      status.innerHTML = "<span style='font-size:20px;font-weight:bold;'>同步成功！</span>";
+      progress.innerHTML = "共同步 <b style='color:#4ade80;font-size:18px;'>" + result.total_synced + "</b> 条记录<br>涉及 " + (result.seasons?.length || 0) + " 个赛季";
+      progress.style.color = "#a7f3d0";
+    } else {
+      iconEl.textContent = "❌";
+      div.style.background = "rgba(120,0,0,0.95)";
+      status.innerHTML = "<span style='font-size:20px;font-weight:bold;'>同步失败</span>";
+      progress.innerHTML = (result.detail || "未知错误");
+      progress.style.color = "#fca5a5";
+    }
+    
+    // 显示关闭提示
+    closeHint.style.display = "block";
+    
+    // 点击任意位置关闭
+    div.onclick = () => div.remove();
+    
+    // 8秒后自动关闭
+    setTimeout(() => div.remove(), 8000);
+    
+  } catch (e) {
+    // 错误弹窗
+    const errDiv = document.createElement("div");
+    errDiv.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(120,0,0,0.95);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,-apple-system,sans-serif;";
+    errDiv.innerHTML = "<div style='font-size:48px;margin-bottom:20px;'>❌</div><div style='font-size:24px;font-weight:bold;margin-bottom:15px;'>同步失败</div><div style='font-size:16px;max-width:400px;text-align:center;'>" + e.message + "</div><div style='margin-top:30px;color:#fca5a5;font-size:12px;'>点击任意位置关闭</div>";
+    errDiv.onclick = () => errDiv.remove();
+    document.body.appendChild(errDiv);
+    document.getElementById("qk-sync-overlay")?.remove();
+  }
+})();
+    `.trim().replace(/\s+/g, ' ');
+    
+    return "javascript:" + encodeURIComponent(code);
+  }
+  
+  // 打开弹窗
+  if (bookmarkletBtn) {
+    bookmarkletBtn.addEventListener("click", () => {
+      bookmarkletModal.style.display = "flex";
+    });
+  }
+  
+  // 关闭弹窗
+  if (bookmarkletClose) {
+    bookmarkletClose.addEventListener("click", () => {
+      bookmarkletModal.style.display = "none";
+    });
+  }
+  
+  // 点击弹窗外部关闭
+  if (bookmarkletModal) {
+    bookmarkletModal.addEventListener("click", (e) => {
+      if (e.target === bookmarkletModal) {
+        bookmarkletModal.style.display = "none";
+      }
+    });
+  }
+  
+  // 生成令牌
+  if (btnGenToken) {
+    btnGenToken.addEventListener("click", async () => {
+      btnGenToken.disabled = true;
+      btnGenToken.textContent = "生成中...";
+      
+      try {
+        const resp = await fetch("/api/ua-rank/generate-sync-token", {
+          method: "POST",
+          credentials: "include",
+        });
+        
+        if (!resp.ok) {
+          throw new Error(resp.status === 401 ? "未登录" : "生成失败");
+        }
+        
+        const data = await resp.json();
+        const token = data.token;
+        
+        // 显示 token
+        syncTokenEl.textContent = token.substring(0, 16) + "...";
+        tokenDisplay.style.display = "block";
+        
+        // 更新 bookmarklet 链接
+        bookmarkletLink.href = generateBookmarkletCode(token);
+        bookmarkletLink.style.opacity = "1";
+        bookmarkletLink.style.pointerEvents = "auto";
+        
+        btnGenToken.textContent = "✅ 已生成";
+        btnGenToken.disabled = false;
+        
+      } catch (e) {
+        alert("生成令牌失败: " + e.message);
+        btnGenToken.textContent = "生成令牌";
+        btnGenToken.disabled = false;
+      }
+    });
+  }
+  
+  // 初始化 bookmarklet 链接为不可用状态
+  if (bookmarkletLink) {
+    bookmarkletLink.style.opacity = "0.5";
+    bookmarkletLink.style.pointerEvents = "none";
   }
 
   function escapeHtml(str) {
