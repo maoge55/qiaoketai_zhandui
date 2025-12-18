@@ -77,6 +77,9 @@ a {
   color: #f8fafc;
   font-size: 20px;
   cursor: pointer;
+  z-index: 100;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .qk-logo {
@@ -681,13 +684,20 @@ a {
     flex-wrap: wrap;
     height: 60px;
     gap: 8px;
-    padding: 0;
+    padding: 0 12px;
   }
 
   .qk-menu-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    z-index: 300;
+  }
+  
+  .qk-menu-toggle:active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(0.95);
   }
 
   .qk-logo-main {
@@ -705,15 +715,18 @@ a {
     justify-content: center;
     position: relative;
     height: 100%;
+    overflow: visible;
   }
 
   .qk-menu-toggle {
     position: absolute;
-    left: 0;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
   }
 
   .qk-logo {

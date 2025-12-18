@@ -153,7 +153,7 @@
           {{ a.author.nickname if a.author else '未知' }} ·
           {{ a.created_at.strftime('%Y-%m-%d') }}
         </p>
-        <div class="article-excerpt article-excerpt-text">{{ (a.content[:160])|safe }}{% if a.content|length > 160 %}...{% endif %}</div>
+        <div class="article-excerpt article-excerpt-text">{{ (a.content|strip_tags)[:160] }}{% if (a.content|strip_tags)|length > 160 %}...{% endif %}</div>
       </article>
       {% else %}
       <p>暂无精选文章，快让大神们写几篇吧～</p>

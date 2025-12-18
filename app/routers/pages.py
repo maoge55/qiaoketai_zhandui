@@ -16,8 +16,22 @@ from app.models import (
     UserProfile,
     UserRole,
 )
+import re
 
 templates = Jinja2Templates(directory="app/templates")
+
+# 自定义过滤器：去除 HTML 标签
+def strip_tags(value):
+    """去除 HTML 标签，只保留纯文本"""
+    if not value:
+        return ""
+    # 去除 HTML 标签
+    clean = re.sub(r'<[^>]+>', '', str(value))
+    # 去除多余空白
+    clean = re.sub(r'\s+', ' ', clean).strip()
+    return clean
+
+templates.env.filters['strip_tags'] = strip_tags
 
 router = APIRouter(include_in_schema=False)
 
