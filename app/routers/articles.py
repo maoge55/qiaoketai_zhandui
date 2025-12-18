@@ -1,13 +1,15 @@
 from typing import List, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, case
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import (
     get_db,
     require_elite_member,
     require_admin,
+    require_admin_cookie,
     get_current_user,
     require_member,
     get_current_user_from_cookie,
@@ -94,15 +96,19 @@ def list_articles_paged(
 
     # total：SQL Server 需要 ORDER BY 列出现在 SELECT 中，改用 group_by + 子查询计数
     id_query = (
-        q.with_entities(Article.id, Article.created_at)
-        .group_by(Article.id, Article.created_at)
+        q.with_entities(Article.id, Article.created_at, Article.pinned_at)
+        .group_by(Article.id, Article.created_at, Article.pinned_at)
     )
 
     total = db.query(func.count()).select_from(id_query.subquery()).scalar() or 0
 
+    # 排序：置顶的在前面（按 pinned_at 倒序），然后按创建时间倒序
+    # SQL Server 不支持 NULLS LAST，用 case 把 NULL 排在后面
+    pinned_null_last = case((Article.pinned_at.is_(None), 1), else_=0)
+    
     # 分页拿到 id 列表，再查实体
     id_rows = (
-        id_query.order_by(Article.created_at.desc(), Article.id.desc())
+        id_query.order_by(pinned_null_last, Article.pinned_at.desc(), Article.created_at.desc(), Article.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -114,7 +120,7 @@ def list_articles_paged(
         items = (
             db.query(Article)
             .filter(Article.id.in_(ids))
-            .order_by(Article.created_at.desc(), Article.id.desc())
+            .order_by(pinned_null_last, Article.pinned_at.desc(), Article.created_at.desc(), Article.id.desc())
             .all()
         )
 
@@ -148,6 +154,7 @@ def list_articles_paged(
                 upvote_count=int(getattr(a, "upvote_count", 0) or 0),
                 downvote_count=int(getattr(a, "downvote_count", 0) or 0),
                 current_user_action=current_action,
+                is_pinned=a.pinned_at is not None,
             )
         )
 
@@ -305,3 +312,43 @@ def delete_article(
     article.status = ArticleStatus.DELETED
     db.commit()
     return {"message": "删除成功"}
+
+
+@router.post("/{article_id}/pin")
+async def pin_article(
+    article_id: int,
+    current_user: User = Depends(require_admin_cookie),
+    db: Session = Depends(get_db),
+):
+    """
+    置顶攻略。最多3篇置顶，超过则取消最早置顶的。
+    后置顶的在最前面（按 pinned_at 倒序）。
+    """
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(404, "文章不存在")
+
+    # 如果已经置顶，则取消置顶
+    if article.pinned_at is not None:
+        article.pinned_at = None
+        db.commit()
+        return {"message": "已取消置顶", "is_pinned": False}
+
+    # 查询当前置顶的文章数量
+    pinned_articles = (
+        db.query(Article)
+        .filter(Article.pinned_at.isnot(None))
+        .order_by(Article.pinned_at.asc())  # 按置顶时间升序，最早的在前
+        .all()
+    )
+
+    # 如果已有3篇置顶，取消最早置顶的那篇
+    if len(pinned_articles) >= 3:
+        oldest_pinned = pinned_articles[0]
+        oldest_pinned.pinned_at = None
+
+    # 设置当前文章为置顶
+    article.pinned_at = datetime.utcnow()
+    db.commit()
+
+    return {"message": "已置顶", "is_pinned": True}

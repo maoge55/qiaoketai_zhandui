@@ -110,6 +110,9 @@ class Article(Base):
     upvote_count = Column(Integer, nullable=False, default=0)
     downvote_count = Column(Integer, nullable=False, default=0)
 
+    # ✅ 置顶时间（非空则置顶，按时间倒序排，后置顶的在前面）
+    pinned_at = Column(DateTime, nullable=True, default=None)
+
     author = relationship("User", back_populates="articles")
     tags = relationship("ArticleTag", back_populates="article")
     comments = relationship("Comment", back_populates="article")

@@ -11,6 +11,7 @@ from app.models import (
     Achievement,
     AchievementStatus,
     Card,
+    CardReview,
     HomepageConfig,
     GuideVote,
     User,
@@ -168,7 +169,10 @@ async def card_detail_page(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_from_cookie),
 ):
-    card = db.query(Card).filter(Card.id == card_id).first()
+    # 优先按游戏卡牌ID查询，如果找不到再按数据库主键查询
+    card = db.query(Card).filter(Card.card_id == card_id).first()
+    if not card:
+        card = db.query(Card).filter(Card.id == card_id).first()
     if not card:
         raise HTTPException(status_code=404, detail="卡牌不存在")
 
@@ -255,6 +259,27 @@ async def member_detail_page(
         .all()
     )
 
+    # 查询用户写的攻略（已发布的）
+    user_articles = (
+        db.query(Article)
+        .filter(
+            Article.author_id == user_id,
+            Article.status == ArticleStatus.PUBLISHED,
+        )
+        .order_by(Article.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    # 查询用户的卡片点评
+    user_reviews = (
+        db.query(CardReview)
+        .filter(CardReview.reviewer_id == user_id)
+        .order_by(CardReview.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
     return templates.TemplateResponse(
         "member_detail.html",
         {
@@ -263,6 +288,8 @@ async def member_detail_page(
             "user": user,
             "profile": profile,
             "achievements": achievements,
+            "user_articles": user_articles,
+            "user_reviews": user_reviews,
         },
     )
 
@@ -347,6 +374,56 @@ async def new_guide_page(
     return templates.TemplateResponse(
         "guide_new.html",
         {"request": request, "current_user": current_user},
+    )
+
+
+@router.get("/guides/{article_id}/edit", response_class=HTMLResponse)
+async def edit_guide_page(
+    article_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_from_cookie),
+):
+    """编辑攻略页面，仅管理员可访问"""
+    if not current_user or current_user.role not in [
+        UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
+    ]:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "仅管理员可以编辑攻略",
+                "current_user": current_user,
+            },
+            status_code=403,
+        )
+    
+    article = (
+        db.query(Article)
+        .filter(
+            Article.id == article_id, Article.status != ArticleStatus.DELETED
+        )
+        .first()
+    )
+    if not article:
+        return templates.TemplateResponse(
+            "error_403.html",
+            {
+                "request": request,
+                "message": "文章不存在",
+                "current_user": current_user,
+            },
+            status_code=404,
+        )
+    
+    return templates.TemplateResponse(
+        "guide_edit.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "article": article,
+        },
     )
 
 

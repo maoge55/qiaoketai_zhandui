@@ -1,10 +1,9 @@
 {% extends "base.html" %}
-{% block title %}发布攻略 - 竞技场宝典{% endblock %}
+{% block title %}编辑攻略 - 竞技场宝典{% endblock %}
 
 {% block head_extra %}
   <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet" />
   <style>
-    /* 富文本编辑器整体风格，尽量贴近站内卡片 */
     #g-toolbar {
       border-top-left-radius: 14px;
       border-top-right-radius: 14px;
@@ -20,6 +19,10 @@
       background: rgba(15, 23, 42, 0.35);
       color: #e5e7eb;
     }
+    #g-editor img {
+      max-width: 100%;
+      height: auto;
+    }
     .ql-snow .ql-toolbar button,
     .ql-snow .ql-toolbar .ql-picker-label {
       color: #e5e7eb;
@@ -33,50 +36,42 @@
       line-height: 1.75;
     }
     .ql-editor a { color: #38bdf8; }
-    /* 编辑器内图片自适应 */
-    .ql-editor img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-    }
+    .ql-editor img { max-width: 100%; height: auto; border-radius: 8px; }
   </style>
 {% endblock %}
 
 {% block content %}
 <div class="qk-container">
   <div class="card">
-    <h1>发布竞技场攻略</h1>
-    <p class="meta">仅大神成员/管理员可发布。支持富文本：图片、超链接、标签、附件（文件链接）等。</p>
+    <h1>编辑攻略</h1>
+    <p class="meta">管理员编辑模式</p>
 
-    <form id="guide-new-form" style="display:grid; gap: 14px; margin-top: 16px;">
+    <form id="guide-edit-form" style="display:grid; gap: 14px; margin-top: 16px;">
       <label class="qk-field">
         <span class="qk-label">标题</span>
-        <input id="g-title" class="qk-input" placeholder="例如：新版本竞技场选牌思路（2025.12）" required />
+        <input id="g-title" class="qk-input" value="{{ article.title }}" required />
       </label>
 
       <div class="guide-meta-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <label class="qk-field">
           <span class="qk-label">分类（可选）</span>
-          <input id="g-category" class="qk-input" placeholder="例如：选牌 / 对局 / 职业指南" />
+          <input id="g-category" class="qk-input" value="{{ article.category or '' }}" />
         </label>
 
         <label class="qk-field">
           <span class="qk-label">标签（可选，逗号分隔）</span>
-          <input id="g-tags" class="qk-input" placeholder="例如：德鲁伊, 新版本, Arena" />
+          <input id="g-tags" class="qk-input" value="{% for t in article.tags %}{{ t.tag_name }}{% if not loop.last %}, {% endif %}{% endfor %}" />
         </label>
       </div>
 
-      {% if current_user and current_user.role.value in ['admin','super_admin'] %}
       <label class="qk-field" style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="g-featured" />
+        <input type="checkbox" id="g-featured" {% if article.is_featured %}checked{% endif %} />
         <span class="qk-label" style="margin:0;">设为首页精选</span>
       </label>
-      {% endif %}
 
       <div class="qk-field">
         <span class="qk-label">正文</span>
 
-        <!-- 自定义工具栏：增加“附件”按钮（📎） -->
         <div id="g-toolbar">
           <span class="ql-formats">
             <select class="ql-header">
@@ -111,17 +106,12 @@
         </div>
 
         <div id="g-editor"></div>
-        <!-- 隐藏字段：提交时写入编辑器 HTML -->
-        <textarea id="g-content" style="display:none;"></textarea>
-
-        <small class="meta">
-          安全提示：攻略正文会在前端渲染，请不要粘贴未知脚本内容。服务端会对 HTML 做基础清洗。
-        </small>
+        <textarea id="g-content" style="display:none;">{{ article.content }}</textarea>
       </div>
 
       <div style="display:flex; gap:10px; align-items:center;">
-        <button type="submit" class="qk-btn qk-btn-primary">发布</button>
-        <a href="/guides" class="qk-btn qk-btn-outline">返回列表</a>
+        <button type="submit" class="qk-btn qk-btn-primary">保存修改</button>
+        <a href="/guides/{{ article.id }}" class="qk-btn qk-btn-outline">取消</a>
         <span id="g-status" class="meta"></span>
       </div>
     </form>
@@ -133,14 +123,14 @@
 <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("guide-new-form");
+    const form = document.getElementById("guide-edit-form");
     if (!form) return;
 
+    const articleId = {{ article.id }};
     const status = document.getElementById("g-status");
     const editorEl = document.getElementById("g-editor");
     const contentField = document.getElementById("g-content");
 
-    // 上传工具
     async function uploadTo(url, file) {
       const token = getToken();
       if (!token) {
@@ -161,7 +151,6 @@
       return data.url;
     }
 
-    // 初始化 Quill
     const quill = new Quill(editorEl, {
       theme: "snow",
       modules: {
@@ -204,7 +193,6 @@
                   status.textContent = "";
                   if (!url) return;
                   const range = quill.getSelection(true) || { index: quill.getLength() };
-                  // 插入一个可点击的文件链接
                   quill.insertText(range.index, file.name, "link", url);
                   quill.insertText(range.index + file.name.length, " ");
                   quill.setSelection(range.index + file.name.length + 1);
@@ -219,6 +207,12 @@
       },
     });
 
+    // 加载已有内容
+    const existingContent = contentField.value || "";
+    if (existingContent) {
+      quill.root.innerHTML = existingContent;
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const token = getToken();
@@ -230,17 +224,16 @@
       const featuredEl = document.getElementById("g-featured");
       const is_featured = featuredEl ? !!featuredEl.checked : false;
 
-      // 将编辑器 HTML 写入隐藏字段
       const html = quill.root.innerHTML || "";
       contentField.value = html;
       const content = contentField.value;
 
       const tags = tagsRaw ? tagsRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean) : [];
 
-      status.textContent = "发布中...";
+      status.textContent = "保存中...";
 
-      const res = await fetch("/api/articles", {
-        method: "POST",
+      const res = await fetch(`/api/articles/${articleId}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer " + token,
@@ -257,11 +250,11 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         status.textContent = "";
-        return alert(data.detail || "发布失败");
+        return alert(data.detail || "保存失败");
       }
 
-      status.textContent = "发布成功，跳转中...";
-      window.location.href = `/guides/${data.id}`;
+      status.textContent = "保存成功，跳转中...";
+      window.location.href = `/guides/${articleId}`;
     });
   });
 </script>

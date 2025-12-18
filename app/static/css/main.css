@@ -199,6 +199,20 @@ a {
   gap: 12px;
 }
 
+.guide-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 攻略正文图片自适应 */
+.guide-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
 /* ===== 评论输入区工具条 ===== */
 .qk-comment-input {
   min-height: 120px;
@@ -1348,6 +1362,14 @@ a {
   border-radius: 16px;
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(55, 65, 81, 0.9);
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+/* 点评高亮动画（从用户详情页跳转过来时） */
+.card-review-item.highlight-review {
+  background: rgba(255, 180, 50, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(255, 180, 50, 0.3);
 }
 
 .review-header {
@@ -2170,6 +2192,35 @@ select.qk-input {
   margin: 16px 0;
 }
 
+/* 置顶攻略样式 */
+.guide-card.is-pinned {
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(15, 23, 42, 0.9) 100%);
+}
+
+.guide-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.guide-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1e293b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-pin-guide {
+  margin-left: 8px;
+}
+
 /* ===== 战队名册 · 成员名片样式（最终版） ===== */
 
 .members-subtitle {
@@ -2478,6 +2529,116 @@ body:has(#members-grid) .qk-container {
   background: rgba(15, 23, 42, 0.78);
   border: 1px solid rgba(148, 163, 184, 0.22);
   box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+}
+
+/* 成员详情页 - 攻略列表样式 */
+.member-article-item {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.member-article-item:last-child {
+  border-bottom: none;
+}
+
+.member-article-link {
+  display: block;
+  transition: color 0.2s;
+}
+
+.member-article-link:hover {
+  color: var(--primary);
+}
+
+.member-article-link h3 {
+  font-size: 1rem;
+  margin: 0 0 6px 0;
+  font-weight: 600;
+}
+
+.member-article-item .meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* 成员详情页 - 卡片点评列表样式 */
+.member-review-item {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.member-review-item:last-child {
+  border-bottom: none;
+}
+
+.member-review-link {
+  display: block;
+  transition: color 0.2s;
+}
+
+.member-review-link:hover {
+  color: var(--primary);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.review-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.review-score {
+  font-size: 0.9rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.review-content {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin: 0 0 6px 0;
+  line-height: 1.5;
+}
+
+.member-review-item .meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* 成员详情页 - 点评卡牠图片列表 */
+.member-reviewed-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.member-reviewed-card {
+  display: block;
+  width: 80px;
+  height: 110px;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.member-reviewed-card:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(255, 180, 50, 0.3);
+  border-color: var(--primary);
+}
+
+.member-reviewed-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* hover 时再轻微上浮一点点，叠加动画，更有“金边卡牌”的感觉 */

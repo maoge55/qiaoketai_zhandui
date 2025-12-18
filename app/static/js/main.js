@@ -590,6 +590,10 @@ function initGuidesPage() {
     window.history.replaceState({}, "", url.toString());
   }
 
+  // 获取当前用户角色（用于判断是否显示管理按钮）
+  const ctx = window.QK_GUIDES_CTX || {};
+  const isAdmin = ctx.currentUser && ["admin", "super_admin"].includes(ctx.currentUser.role);
+
   function render(items) {
     listEl.innerHTML = "";
     if (!items || items.length === 0) {
@@ -608,12 +612,24 @@ function initGuidesPage() {
       const up = Number(a.upvote_count || 0);
       const down = Number(a.downvote_count || 0);
       const currentAction = a.current_user_action || "";
+      const isPinned = !!a.is_pinned;
+
+      // 置顶标志
+      const pinnedBadge = isPinned ? `<span class="guide-pinned-badge">📌 置顶</span>` : "";
+      
+      // 管理员置顶按钮
+      const pinBtn = isAdmin
+        ? `<button type="button" class="qk-btn qk-btn-outline qk-btn-sm btn-pin-guide" data-guide-id="${a.id}" data-is-pinned="${isPinned}">${isPinned ? "取消置顶" : "置顶"}</button>`
+        : "";
 
       const card = document.createElement("div");
-      card.className = "card guide-card";
+      card.className = "card guide-card" + (isPinned ? " is-pinned" : "");
       card.innerHTML = `
         <div class="guide-card-head">
-          <a class="guide-title" href="/guides/${a.id}">${escapeHtml(a.title)}</a>
+          <div class="guide-title-row">
+            ${pinnedBadge}
+            <a class="guide-title" href="/guides/${a.id}">${escapeHtml(a.title)}</a>
+          </div>
           <div class="meta">作者：${escapeHtml(a.author_nickname || "未知")} · ${created}</div>
         </div>
         <div class="guide-excerpt"></div>
@@ -626,6 +642,7 @@ function initGuidesPage() {
               👎 <span class="qk-vote-count" data-role="down-count">${down}</span>
             </button>
           </div>
+          ${pinBtn}
         </div>
         ${tagHtml ? `<div class="guide-tags">${tagHtml}</div>` : ""}
       `;
@@ -788,6 +805,35 @@ function initGuidesPage() {
       root.querySelector('[data-action="up"]').classList.toggle("is-active", prevAction === "up");
       root.querySelector('[data-action="down"]').classList.toggle("is-active", prevAction === "down");
       alert(err.message || "投票失败");
+    }
+  });
+
+  // 管理员置顶按钮点击
+  listEl.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest(".btn-pin-guide");
+    if (!btn) return;
+    ev.preventDefault();
+
+    const guideId = btn.dataset.guideId;
+    const wasPinned = btn.dataset.isPinned === "true";
+
+    btn.disabled = true;
+    btn.textContent = "处理中...";
+
+    try {
+      const res = await fetch(`/api/articles/${guideId}/pin`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "操作失败");
+
+      // 刷新列表
+      load();
+    } catch (err) {
+      alert(err.message || "操作失败");
+      btn.disabled = false;
+      btn.textContent = wasPinned ? "取消置顶" : "置顶";
     }
   });
 }
@@ -1769,7 +1815,7 @@ async function initCardDetailPage() {
     const currentAction = r.current_user_action || "";
 
     return `
-      <article class="card-review-item" data-review-id="${r.review_id}">
+      <article class="card-review-item" id="review-${r.review_id}" data-review-id="${r.review_id}">
         <header class="review-header">
           <div class="reviewer-info">
             <div class="avatar-placeholder">${escapeHtml(reviewerInitial)}</div>
@@ -1990,6 +2036,17 @@ async function initCardDetailPage() {
   // 首次加载
   await loadReviews(true);
   await loadMyReview();
+
+  // 检查 URL hash，滚动到对应评论并高亮
+  const hash = window.location.hash;
+  if (hash && hash.startsWith("#review-")) {
+    const targetEl = document.getElementById(hash.substring(1));
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      targetEl.classList.add("highlight-review");
+      setTimeout(() => targetEl.classList.remove("highlight-review"), 3000);
+    }
+  }
 }
 
 // 简单全局初始化

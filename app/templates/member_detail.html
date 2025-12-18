@@ -49,6 +49,39 @@
       <p>暂时还没有录入成就。</p>
       {% endfor %}
     </div>
+
+    <div class="card">
+      <h2>{% if profile and profile.gender == '男' %}他{% elif profile and profile.gender == '女' %}她{% else %}TA{% endif %}发布的攻略</h2>
+      {% for article in user_articles %}
+      <div class="member-article-item">
+        <a href="/guides/{{ article.id }}" class="member-article-link">
+          <h3>{{ article.title }}</h3>
+        </a>
+        <p class="meta">
+          {{ article.category or '未分类' }} ·
+          {{ article.created_at.strftime('%Y-%m-%d') if article.created_at else '' }}
+          {% if article.upvote_count > 0 %}· 👍 {{ article.upvote_count }}{% endif %}
+        </p>
+      </div>
+      {% else %}
+      <p>还没有发布过攻略。</p>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <h2>{% if profile and profile.gender == '男' %}他{% elif profile and profile.gender == '女' %}她{% else %}TA{% endif %}的卡片点评</h2>
+      {% if user_reviews %}
+      <div class="member-reviewed-cards">
+        {% for review in user_reviews %}
+        <a href="/cards/{{ review.card.card_id }}?highlight_reviewer={{ user.id }}#review-{{ review.id }}" class="member-reviewed-card" title="{{ review.card.name }}">
+          <img src="{{ review.card.pic or '/static/image/card_placeholder.png' }}" alt="{{ review.card.name }}">
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p>还没有发表过卡片点评。</p>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

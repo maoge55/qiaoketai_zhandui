@@ -11,16 +11,21 @@
           · {{ article.created_at.strftime('%Y-%m-%d') }}
         </p>
       </div>
-      <div class="qk-vote" id="guide-vote" data-guide-id="{{ article.id }}" data-current-action="{{ guide_current_user_action or '' }}">
-        <button class="qk-vote-btn {% if guide_current_user_action=='up' %}is-active{% endif %}" type="button" data-action="up" aria-label="点赞">
-          👍 <span class="qk-vote-count" data-role="up-count">{{ article.upvote_count or 0 }}</span>
-        </button>
-        <button class="qk-vote-btn {% if guide_current_user_action=='down' %}is-active{% endif %}" type="button" data-action="down" aria-label="拉踩">
-          👎 <span class="qk-vote-count" data-role="down-count">{{ article.downvote_count or 0 }}</span>
-        </button>
+      <div class="guide-detail-actions">
+        {% if current_user and current_user.role.value in ['admin', 'super_admin'] %}
+        <a href="/guides/{{ article.id }}/edit" class="qk-btn qk-btn-outline qk-btn-sm">✏️ 编辑</a>
+        {% endif %}
+        <div class="qk-vote" id="guide-vote" data-guide-id="{{ article.id }}" data-current-action="{{ guide_current_user_action or '' }}">
+          <button class="qk-vote-btn {% if guide_current_user_action=='up' %}is-active{% endif %}" type="button" data-action="up" aria-label="点赞">
+            👍 <span class="qk-vote-count" data-role="up-count">{{ article.upvote_count or 0 }}</span>
+          </button>
+          <button class="qk-vote-btn {% if guide_current_user_action=='down' %}is-active{% endif %}" type="button" data-action="down" aria-label="拉踩">
+            👎 <span class="qk-vote-count" data-role="down-count">{{ article.downvote_count or 0 }}</span>
+          </button>
+        </div>
       </div>
     </div>
-    <div class="content">
+    <div class="content guide-content">
       {{ article.content | safe }}
     </div>
   </article>

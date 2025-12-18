@@ -140,6 +140,8 @@ class ArticleListItem(BaseModel):
     downvote_count: int = 0
     # up/down/None，用于前端高亮
     current_user_action: Optional[Literal["up", "down"]] = None
+    # 是否置顶
+    is_pinned: bool = False
 
     class Config:
         from_attributes = True
