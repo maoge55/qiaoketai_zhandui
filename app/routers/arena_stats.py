@@ -88,8 +88,16 @@ def do_sync_hdt_stats():
         # 第二步：获取 HSReplay 竞技场统计数据（使用 curl_cffi 模拟 Chrome TLS 指纹）
         stats_url = "https://hsreplay.net/api/v1/arena/card_stats/free/?ArenaTimestampRangeFilter=LAST_4_DAYS"
         
-        # 使用 curl_cffi 模拟 Chrome 浏览器
-        resp = curl_requests.get(stats_url, impersonate="chrome", timeout=60)
+        # 使用 curl_cffi 模拟最新 Chrome 浏览器（chrome120 指纹）
+        resp = curl_requests.get(
+            stats_url, 
+            impersonate="chrome120",
+            timeout=60,
+            headers={
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+        )
         resp.raise_for_status()
         stats_data = resp.json()
         
