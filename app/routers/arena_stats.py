@@ -86,8 +86,27 @@ def do_sync_hdt_stats():
         
         # 第二步：获取 HSReplay 竞技场统计数据
         stats_url = "https://hsreplay.net/api/v1/arena/card_stats/free/?ArenaTimestampRangeFilter=LAST_4_DAYS"
+        
+        # 使用完整的浏览器请求头
+        headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "Priority": "u=0, i",
+            "Sec-Ch-Ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        }
+        
         with httpx.Client(timeout=60.0) as client:
-            resp = client.get(stats_url)
+            resp = client.get(stats_url, headers=headers)
             resp.raise_for_status()
             stats_data = resp.json()
         
