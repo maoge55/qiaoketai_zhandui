@@ -105,7 +105,7 @@ def do_sync_hdt_stats():
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
         }
         
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=60.0, http2=True) as client:
             resp = client.get(stats_url, headers=headers)
             resp.raise_for_status()
             stats_data = resp.json()
