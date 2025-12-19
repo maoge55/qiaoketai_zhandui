@@ -53,19 +53,28 @@
         <h3>写点评（短评 + 评分）</h3>
         {% if current_user and current_user.role.value in ['member','elite_member','admin','super_admin'] %}
         <div style="display:grid; gap: 10px;">
-          <label class="qk-field">
-            <span class="qk-label">评分（0~5）</span>
-            <input id="my-review-score" class="qk-input" type="number" min="0" max="5" step="0.5" placeholder="例如：4.5" />
-          </label>
+          <div class="qk-field">
+            <span class="qk-label">评分</span>
+            <div class="score-btn-group" id="score-btn-group">
+              <button type="button" class="score-btn score-btn-bad" data-score="0">0</button>
+              <button type="button" class="score-btn score-btn-bad" data-score="0.5">0.5</button>
+              <button type="button" class="score-btn score-btn-bad" data-score="1">1</button>
+              <button type="button" class="score-btn score-btn-bad" data-score="1.5">1.5</button>
+              <button type="button" class="score-btn score-btn-low" data-score="2">2</button>
+              <button type="button" class="score-btn score-btn-low" data-score="2.5">2.5</button>
+              <button type="button" class="score-btn score-btn-mid" data-score="3">3</button>
+              <button type="button" class="score-btn score-btn-mid" data-score="3.5">3.5</button>
+              <button type="button" class="score-btn score-btn-good" data-score="4">4</button>
+              <button type="button" class="score-btn score-btn-good" data-score="4.5">4.5</button>
+              <button type="button" class="score-btn score-btn-epic" data-score="5">5</button>
+              <button type="button" class="score-btn score-btn-epic" data-score="6">5+</button>
+            </div>
+            <input id="my-review-score" class="qk-input" type="text" readonly placeholder="点击上方按钮选择评分" style="margin-top: 8px; background: rgba(255,255,255,0.05); cursor: not-allowed;" />
+          </div>
 
           <label class="qk-field">
             <span class="qk-label">短评（最多 200 字）</span>
             <textarea id="my-review-content" class="qk-textarea" rows="4" placeholder="这张卡在竞技场的定位 / 选取优先级 / 配合思路..."></textarea>
-          </label>
-
-          <label class="qk-field">
-            <span class="qk-label">游戏版本（可选）</span>
-            <input id="my-review-version" class="qk-input" placeholder="例如：29.2" />
           </label>
 
           <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">

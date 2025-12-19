@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from contextlib import asynccontextmanager
 from app.database import engine
 from app.models import Base
 from app.routers import (
@@ -25,7 +26,22 @@ from app.routers import (
 # 确保建表（生产推荐用 Alembic 迁移）
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="敲可爱战队 - 炉石竞技场战队官网", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    # 启动时：开启自动同步调度器
+    import asyncio
+    asyncio.create_task(arena_stats_router.auto_sync_scheduler())
+    yield
+    # 关闭时：（无需特殊处理）
+
+
+app = FastAPI(
+    title="敲可爱战队 - 炉石竞技场战队官网",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
 # CORS 配置：允许暴雪榜单页面的跨域请求（用于 bookmarklet 同步）
 app.add_middleware(

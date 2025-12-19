@@ -1,12 +1,16 @@
 """竞技场卡牌统计数据同步 API"""
+import asyncio
+import threading
 from datetime import datetime
+from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, require_admin_cookie
 from app.models import ArenaCardStats
+from app.database import SessionLocal
 
 router = APIRouter(prefix="/api/arena", tags=["arena-stats"])
 
@@ -26,20 +30,44 @@ CLASS_MAP = {
     "DEMONHUNTER": "恶魔猎手",
 }
 
+# 同步状态
+class SyncState:
+    def __init__(self):
+        self.is_syncing = False
+        self.last_sync_time: Optional[datetime] = None
+        self.last_sync_result: Optional[dict] = None
+        self.sync_version = 0  # 用于前端检测是否有新数据
+        self._lock = threading.Lock()
+    
+    def start_sync(self):
+        with self._lock:
+            if self.is_syncing:
+                return False
+            self.is_syncing = True
+            return True
+    
+    def finish_sync(self, result: dict):
+        with self._lock:
+            self.is_syncing = False
+            self.last_sync_time = datetime.utcnow()
+            self.last_sync_result = result
+            self.sync_version += 1
+    
+    def get_status(self):
+        with self._lock:
+            return {
+                "is_syncing": self.is_syncing,
+                "last_sync_time": self.last_sync_time.isoformat() if self.last_sync_time else None,
+                "last_sync_result": self.last_sync_result,
+                "sync_version": self.sync_version,
+            }
 
-@router.post("/sync-hdt-stats")
-def sync_hdt_card_stats(
-    current_user=Depends(require_admin_cookie),
-    db: Session = Depends(get_db),
-):
-    """
-    同步 HSReplay 竞技场卡牌统计数据（仅管理员可用）
-    
-    1. 获取 hearthstonejson 卡牌数据，建立 card['id'] -> card['dbfId'] 映射
-    2. 获取 hsreplay 竞技场统计数据
-    3. 更新或插入到 arena_card_stats 表
-    """
-    
+sync_state = SyncState()
+
+
+def do_sync_hdt_stats():
+    """执行同步逻辑（可在后台线程运行）"""
+    db = SessionLocal()
     try:
         # 第一步：获取卡牌 ID 映射
         cards_url = "https://api.hearthstonejson.com/v1/latest/zhCN/cards.json"
@@ -51,8 +79,8 @@ def sync_hdt_card_stats(
         # 建立 card_id_str -> dbfId 的映射
         card_dict = {}
         for card in cards_data:
-            card_id_str = card.get("id")  # 字符串 ID，如 "DREAM_05"
-            dbf_id = card.get("dbfId")     # 数字 ID，对应我们的 card_id
+            card_id_str = card.get("id")
+            dbf_id = card.get("dbfId")
             if card_id_str and dbf_id:
                 card_dict[card_id_str] = dbf_id
         
@@ -71,34 +99,27 @@ def sync_hdt_card_stats(
         skipped_count = 0
         
         for class_key, class_cards in data_section.items():
-            # 获取中文职业名
             card_class_cn = CLASS_MAP.get(class_key)
             if not card_class_cn:
-                # 未知职业，跳过
                 continue
             
             for card_stat in class_cards:
-                # 获取卡牌的字符串 ID
                 card_id_str = card_stat.get("card_id")
                 if not card_id_str:
                     skipped_count += 1
                     continue
                 
-                # 转换为 dbfId
                 dbf_id = card_dict.get(card_id_str)
                 if not dbf_id:
-                    # 找不到对应的 dbfId，跳过
                     skipped_count += 1
                     continue
                 
-                # 查找是否已存在
                 existing = db.query(ArenaCardStats).filter(
                     ArenaCardStats.card_id == dbf_id,
                     ArenaCardStats.card_class == card_class_cn
                 ).first()
                 
                 if existing:
-                    # 更新
                     existing.popularity = card_stat.get("popularity")
                     existing.avg_copies_in_deck = card_stat.get("avg_copies_in_deck")
                     existing.win_rate = card_stat.get("win_rate")
@@ -108,7 +129,6 @@ def sync_hdt_card_stats(
                     existing.updated_at = datetime.utcnow()
                     updated_count += 1
                 else:
-                    # 插入
                     new_stat = ArenaCardStats(
                         card_id=dbf_id,
                         popularity=card_stat.get("popularity"),
@@ -132,8 +152,94 @@ def sync_hdt_card_stats(
             "skipped": skipped_count,
         }
     
-    except httpx.HTTPError as e:
-        raise HTTPException(500, f"请求外部 API 失败: {str(e)}")
     except Exception as e:
         db.rollback()
-        raise HTTPException(500, f"同步失败: {str(e)}")
+        return {
+            "success": False,
+            "message": f"同步失败: {str(e)}",
+            "error": str(e),
+        }
+    finally:
+        db.close()
+
+
+def background_sync_task():
+    """后台同步任务"""
+    if not sync_state.start_sync():
+        return  # 已在同步中
+    
+    try:
+        result = do_sync_hdt_stats()
+        sync_state.finish_sync(result)
+    except Exception as e:
+        sync_state.finish_sync({"success": False, "message": str(e)})
+
+
+# 定时任务：每10分钟自动同步
+_scheduler_started = False
+
+async def auto_sync_scheduler():
+    """自动同步调度器"""
+    global _scheduler_started
+    if _scheduler_started:
+        return
+    _scheduler_started = True
+    
+    # 等待应用启动完成
+    await asyncio.sleep(5)
+    
+    while True:
+        try:
+            # 在线程池中执行同步
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, background_sync_task)
+        except Exception as e:
+            print(f"[HDT Sync] 自动同步失败: {e}")
+        
+        # 等待10分钟
+        await asyncio.sleep(600)
+
+
+def start_auto_sync():
+    """启动自动同步（在应用启动时调用）"""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(auto_sync_scheduler())
+        else:
+            loop.create_task(auto_sync_scheduler())
+    except RuntimeError:
+        # 没有事件循环，创建新的
+        pass
+
+
+@router.get("/sync-status")
+def get_sync_status():
+    """获取同步状态（无需登录）"""
+    return sync_state.get_status()
+
+
+@router.post("/sync-hdt-stats")
+def sync_hdt_card_stats(
+    background_tasks: BackgroundTasks,
+    current_user=Depends(require_admin_cookie),
+):
+    """
+    手动触发同步 HSReplay 竞技场卡牌统计数据（仅管理员可用）
+    同步在后台执行，立即返回
+    """
+    if sync_state.is_syncing:
+        return {
+            "success": True,
+            "message": "同步正在进行中，请稍后查看结果",
+            "is_syncing": True,
+        }
+    
+    # 在后台执行同步
+    background_tasks.add_task(background_sync_task)
+    
+    return {
+        "success": True,
+        "message": "同步任务已启动，将在后台执行",
+        "is_syncing": True,
+    }

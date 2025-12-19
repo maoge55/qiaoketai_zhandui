@@ -1312,6 +1312,12 @@ a {
   color: #4ade80;
 }
 
+.card-avg-score.score-epic,
+.review-score.score-epic {
+  color: #a855f7;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
 /* 点评列表区 */
 .card-detail-reviews {
   background: rgba(15, 23, 42, 0.9);
@@ -1596,6 +1602,77 @@ a {
 .qk-field input:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+/* 评分按钮组 */
+.score-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.score-btn {
+  min-width: 42px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #fff;
+}
+
+.score-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.score-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+}
+
+/* 0~1.5 分：红色系（较差） */
+.score-btn-bad {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+}
+.score-btn-bad:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+}
+
+/* 2~2.5 分：橙色系（一般） */
+.score-btn-low {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+}
+.score-btn-low:hover {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+/* 3~3.5 分：黄色系（中等） */
+.score-btn-mid {
+  background: linear-gradient(135deg, #ca8a04 0%, #a16207 100%);
+  color: #fff;
+}
+.score-btn-mid:hover {
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+}
+
+/* 4~4.5 分：绿色系（不错） */
+.score-btn-good {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+.score-btn-good:hover {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+/* 5~5+ 分：紫色系（顶级） */
+.score-btn-epic {
+  background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
+}
+.score-btn-epic:hover {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
 }
 
 /* 通用输入控件：用于 select / textarea / 非 qk-field 容器 */

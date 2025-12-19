@@ -1305,8 +1305,14 @@ async function initCardsPage() {
   // ---------- 工具函数 ----------
 
   function getFilters() {
+    const selectedVersion = expansionSelect.value || "";
+    // 竞技场模式下选择"全部版本"时，传递所有竞技场卡池版本
+    let arenaVersionsParam = "";
+    if (arenaFilter && selectedVersion === "" && arenaPoolVersions.length > 0) {
+      arenaVersionsParam = arenaPoolVersions.join(",");
+    }
     return {
-      expansion: expansionSelect.value || "",
+      expansion: selectedVersion,
       cardClass: classSelect ? classSelect.value : "",
       rarity: raritySelect ? raritySelect.value : "",
       search: searchInput ? searchInput.value.trim() : "",
@@ -1314,8 +1320,8 @@ async function initCardsPage() {
       sortOrder: sortOrder,
       // 改为使用 my_reviewed 参数（当前用户是否点评过）
       my_reviewed: reviewedFilter,
-      // 竞技场模式下直接用选中的版本筛选，不再传递所有版本
-      arena_versions: "",
+      // 竞技场模式下选择全部版本时，传递所有竞技场卡池版本
+      arena_versions: arenaVersionsParam,
     };
   }
 
@@ -1485,8 +1491,14 @@ async function initCardsPage() {
   }
 
   // 渲染版本下拉选项
-  function renderExpansionOptions(versions) {
+  function renderExpansionOptions(versions, includeAll = false) {
     expansionSelect.innerHTML = "";
+    if (includeAll) {
+      const allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = "全部版本";
+      expansionSelect.appendChild(allOption);
+    }
     for (const exp of versions) {
       const option = document.createElement("option");
       option.value = exp;
@@ -1610,16 +1622,15 @@ async function initCardsPage() {
   if (btnFilterArena && arenaPoolVersions.length > 0) {
     arenaFilter = true;
     btnFilterArena.classList.add("active");
-    // 只显示竞技场卡池版本
+    // 只显示竞技场卡池版本（包含"全部版本"选项）
     const arenaVersionsSorted = arenaPoolVersions.slice().sort((a, b) => {
       const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
       const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
       return yearB - yearA;
     });
-    renderExpansionOptions(arenaVersionsSorted);
-    if (arenaVersionsSorted.length > 0) {
-      expansionSelect.value = arenaVersionsSorted[0];
-    }
+    renderExpansionOptions(arenaVersionsSorted, true);
+    // 默认选中"全部版本"
+    expansionSelect.value = "";
   }
   
   await loadCards(1);
@@ -1720,20 +1731,18 @@ async function initCardsPage() {
       btnFilterArena.classList.toggle("active", arenaFilter);
       // 切换版本下拉框选项
       if (arenaFilter) {
-        // 只显示竞技场卡池版本
+        // 只显示竞技场卡池版本（包含"全部版本"选项）
         const arenaVersionsSorted = arenaPoolVersions.slice().sort((a, b) => {
           const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
           const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
           return yearB - yearA;
         });
-        renderExpansionOptions(arenaVersionsSorted);
-        // 默认选中第一个版本
-        if (arenaVersionsSorted.length > 0) {
-          expansionSelect.value = arenaVersionsSorted[0];
-        }
+        renderExpansionOptions(arenaVersionsSorted, true);
+        // 默认选中"全部版本"
+        expansionSelect.value = "";
       } else {
-        // 恢复显示所有版本
-        renderExpansionOptions(allExpansions);
+        // 恢复显示所有版本（包含"全部版本"选项）
+        renderExpansionOptions(allExpansions, true);
       }
       loadCards(1);
     });
@@ -1771,7 +1780,7 @@ async function initCardsPage() {
   const btnSyncHdt = document.getElementById("btn-sync-hdt");
   if (btnSyncHdt) {
     btnSyncHdt.addEventListener("click", async () => {
-      if (!confirm("确定要同步HSReplay竞技场卡牌胜率数据吗？这可能需要几秒钟时间。")) return;
+      if (!confirm("确定要同步HSReplay竞技场卡牌胜率数据吗？同步将在后台执行。")) return;
       
       btnSyncHdt.disabled = true;
       btnSyncHdt.textContent = "⏳ 同步中...";
@@ -1784,16 +1793,83 @@ async function initCardsPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "同步失败");
         
-        alert(data.message || "同步成功");
-        loadCards(1); // 刷新卡牌列表
+        // 后台同步已启动，开始轮询
+        pollSyncStatus();
       } catch (err) {
         alert("同步失败: " + (err.message || "未知错误"));
-      } finally {
         btnSyncHdt.disabled = false;
         btnSyncHdt.textContent = "🔄 同步HDT胜率";
       }
     });
   }
+
+  // 轮询同步状态，同步完成后自动刷新
+  let syncVersion = null;
+  let pollInterval = null;
+  const btnSyncHdtRef = document.getElementById("btn-sync-hdt");
+  
+  async function pollSyncStatus() {
+    if (pollInterval) return; // 已在轮询中
+    
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/arena/sync-status");
+        const data = await res.json();
+        
+        // 首次获取版本号
+        if (syncVersion === null) {
+          syncVersion = data.sync_version;
+        }
+        
+        // 如果不在同步中
+        if (!data.is_syncing) {
+          // 如果版本号变化，说明同步完成
+          if (data.sync_version > syncVersion) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            // 恢复按钮状态
+            if (btnSyncHdtRef) {
+              btnSyncHdtRef.disabled = false;
+              btnSyncHdtRef.textContent = "🔄 同步HDT胜率";
+            }
+            // 自动刷新页面
+            loadCards(1);
+            if (data.last_sync_result?.success) {
+              console.log("HDT胜率同步完成，已自动刷新数据");
+            }
+            syncVersion = data.sync_version;
+          } else {
+            // 版本未变化且不在同步中，停止轮询
+            clearInterval(pollInterval);
+            pollInterval = null;
+            if (btnSyncHdtRef) {
+              btnSyncHdtRef.disabled = false;
+              btnSyncHdtRef.textContent = "🔄 同步HDT胜率";
+            }
+          }
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    }, 3000); // 每3秒检查一次
+  }
+  
+  // 页面加载时检查同步状态
+  (async () => {
+    try {
+      const res = await fetch("/api/arena/sync-status");
+      const data = await res.json();
+      syncVersion = data.sync_version;
+      if (data.is_syncing) {
+        // 正在同步中，开始轮询
+        pollSyncStatus();
+        if (btnSyncHdtRef) {
+          btnSyncHdtRef.disabled = true;
+          btnSyncHdtRef.textContent = "⏳ 同步中...";
+        }
+      }
+    } catch (e) {}
+  })();
 
   // 点击卡牌跳详情
   cardsGrid.addEventListener("click", (e) => {
@@ -1822,9 +1898,32 @@ async function initCardDetailPage() {
   // 写点评表单（只有符合权限的用户才会渲染这些 DOM）
   const myScoreEl = document.getElementById("my-review-score");
   const myContentEl = document.getElementById("my-review-content");
-  const myVersionEl = document.getElementById("my-review-version");
+  const scoreBtnGroup = document.getElementById("score-btn-group");
   const mySubmitBtn = document.getElementById("btn-submit-my-review");
   const myStatusEl = document.getElementById("my-review-status");
+
+  // 评分按钮点击事件
+  if (scoreBtnGroup && myScoreEl) {
+    scoreBtnGroup.addEventListener("click", (e) => {
+      const btn = e.target.closest(".score-btn");
+      if (!btn) return;
+      
+      // 移除所有按钮的active状态
+      scoreBtnGroup.querySelectorAll(".score-btn").forEach(b => b.classList.remove("active"));
+      // 添加当前按钮的active状态
+      btn.classList.add("active");
+      
+      // 填充分数到输入框（5+显示为5+，实际值为6）
+      const scoreVal = btn.dataset.score;
+      if (scoreVal === "6") {
+        myScoreEl.value = "5+";
+        myScoreEl.dataset.actualScore = "6";
+      } else {
+        myScoreEl.value = scoreVal;
+        myScoreEl.dataset.actualScore = scoreVal;
+      }
+    });
+  }
 
   let page = 1;
   const pageSize = 10;
@@ -1851,9 +1950,27 @@ async function initCardDetailPage() {
       }
       const d = await res.json().catch(() => ({}));
       if (d && d.id) {
-        myScoreEl.value = d.score ?? "";
+        const savedScore = d.score ?? "";
+        // 填充输入框
+        if (savedScore === 6 || savedScore === "6") {
+          myScoreEl.value = "5+";
+          myScoreEl.dataset.actualScore = "6";
+        } else {
+          myScoreEl.value = savedScore;
+          myScoreEl.dataset.actualScore = String(savedScore);
+        }
         myContentEl.value = d.content ?? "";
-        if (myVersionEl) myVersionEl.value = d.game_version ?? "";
+        
+        // 高亮对应的评分按钮
+        if (scoreBtnGroup && savedScore !== "" && savedScore !== null) {
+          scoreBtnGroup.querySelectorAll(".score-btn").forEach(btn => {
+            btn.classList.remove("active");
+            if (btn.dataset.score === String(savedScore)) {
+              btn.classList.add("active");
+            }
+          });
+        }
+        
         if (myStatusEl) myStatusEl.textContent = "已加载你的历史点评（再次提交会覆盖更新）";
       }
     } catch (e) {
@@ -1872,6 +1989,7 @@ async function initCardDetailPage() {
     let scoreClass = "score-mid";
     if (score < 3) scoreClass = "score-low";
     else if (score > 4) scoreClass = "score-high";
+    if (score >= 6) scoreClass = "score-epic"; // 5+ 顶级
 
     const expertBadge = r.reviewer && r.reviewer.is_expert
       ? `<span class="badge badge-expert">专家</span>`
@@ -1879,8 +1997,10 @@ async function initCardDetailPage() {
 
     const version = r.game_version ? ` · 版本 ${r.game_version}` : "";
 
+    // 评分显示：6分显示为"5+"
     const scoreText = Number(score);
-    const scoreShow = Number.isNaN(scoreText) ? "0.0" : scoreText.toFixed(1);
+    let scoreShow = Number.isNaN(scoreText) ? "0.0" : scoreText.toFixed(1);
+    if (scoreText >= 6) scoreShow = "5+";
     const contentSafe = escapeHtml(r.content || "").replace(/\n/g, "<br>");
 
     // 判断当前用户是否为管理员
@@ -2000,9 +2120,15 @@ async function initCardDetailPage() {
         return;
       }
 
-      const score = Number(myScoreEl.value);
-      if (Number.isNaN(score) || score < 0 || score > 5) {
-        alert("评分请输入 0~5 之间的数字（支持 0.5 步进）");
+      // 从 dataset.actualScore 获取实际分数（5+ 对应 6）
+      const actualScore = myScoreEl.dataset.actualScore;
+      if (!actualScore && actualScore !== "0") {
+        alert("请点击上方按钮选择评分");
+        return;
+      }
+      const score = Number(actualScore);
+      if (Number.isNaN(score) || score < 0 || score > 6) {
+        alert("请选择有效的评分");
         return;
       }
 
@@ -2019,7 +2145,7 @@ async function initCardDetailPage() {
       const payload = {
         score: score,
         content: content,
-        game_version: myVersionEl ? (myVersionEl.value || "").trim() || null : null,
+        game_version: null,
       };
 
       if (myStatusEl) myStatusEl.textContent = "提交中...";
