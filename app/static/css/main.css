@@ -271,13 +271,13 @@ a {
 
 /* 攻略正文链接高亮 */
 .guide-content a {
-  color: var(--accent);
+  color: #60a5fa;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .guide-content a:hover {
-  color: #fcd34d;
+  color: #93c5fd;
 }
 
 /* ===== 评论输入区工具条 ===== */

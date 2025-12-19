@@ -6,9 +6,9 @@
     <div class="guide-detail-head">
       <!-- 作者行：头像 + 昵称/日期 + 操作按钮 -->
       <div class="guide-author-row">
-        <div class="guide-author-info">
-          {% if article.author and article.author.member_profile and article.author.member_profile.avatar_url %}
-          <img src="{{ article.author.member_profile.avatar_url }}" alt="头像" class="guide-author-avatar">
+        <a href="/members/{{ article.author_id }}" class="guide-author-info">
+          {% if article.author and article.author.profile and article.author.profile.avatar_url %}
+          <img src="{{ article.author.profile.avatar_url }}" alt="头像" class="guide-author-avatar">
           {% else %}
           <div class="guide-author-avatar" style="background: linear-gradient(135deg, var(--accent), #f59e0b); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: #000;">
             {{ (article.author.nickname if article.author else '?')[0] }}
@@ -18,7 +18,7 @@
             <span class="guide-author-name">{{ article.author.nickname if article.author else '未知' }}</span>
             <span class="guide-author-date">{{ article.created_at.strftime('%Y-%m-%d') }}</span>
           </div>
-        </div>
+        </a>
         <div class="guide-detail-actions">
           {% if current_user and (current_user.role.value in ['admin', 'super_admin'] or current_user.id == article.author_id) %}
           <a href="/guides/{{ article.id }}/edit" class="qk-btn qk-btn-outline qk-btn-sm">✏️ 编辑</a>
