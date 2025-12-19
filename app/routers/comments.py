@@ -144,6 +144,8 @@ def _delete_comment_tree(db: Session, comment: Comment) -> None:
     children = db.query(Comment).filter(Comment.parent_id == comment.id).all()
     for child in children:
         _delete_comment_tree(db, child)
+    # 先删除关联的通知记录
+    db.query(Notification).filter(Notification.comment_id == comment.id).delete()
     db.delete(comment)
 
 
