@@ -65,11 +65,11 @@ class SyncState:
 sync_state = SyncState()
 
 # 完整模拟浏览器请求头，尽可能绕过反爬虫检测
+# 注意：不设置 Accept-Encoding，让 httpx 自动处理压缩
 BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
     "Origin": "https://hsreplay.net",
     "Referer": "https://hsreplay.net/",
     "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
@@ -78,8 +78,6 @@ BROWSER_HEADERS = {
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
 }
 
 
