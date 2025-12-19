@@ -1491,12 +1491,12 @@ async function initCardsPage() {
   }
 
   // 渲染版本下拉选项
-  function renderExpansionOptions(versions, includeAll = false) {
+  function renderExpansionOptions(versions, includeAll = false, isArenaMode = false) {
     expansionSelect.innerHTML = "";
     if (includeAll) {
       const allOption = document.createElement("option");
       allOption.value = "";
-      allOption.textContent = "全部版本";
+      allOption.textContent = isArenaMode ? "全部竞技场版本" : "全部版本";
       expansionSelect.appendChild(allOption);
     }
     for (const exp of versions) {
@@ -1622,14 +1622,14 @@ async function initCardsPage() {
   if (btnFilterArena && arenaPoolVersions.length > 0) {
     arenaFilter = true;
     btnFilterArena.classList.add("active");
-    // 只显示竞技场卡池版本（包含"全部版本"选项）
+    // 只显示竞技场卡池版本（包含"全部竞技场版本"选项）
     const arenaVersionsSorted = arenaPoolVersions.slice().sort((a, b) => {
       const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
       const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
       return yearB - yearA;
     });
-    renderExpansionOptions(arenaVersionsSorted, true);
-    // 默认选中"全部版本"
+    renderExpansionOptions(arenaVersionsSorted, true, true);
+    // 默认选中"全部竞技场版本"
     expansionSelect.value = "";
   }
   
@@ -1731,18 +1731,18 @@ async function initCardsPage() {
       btnFilterArena.classList.toggle("active", arenaFilter);
       // 切换版本下拉框选项
       if (arenaFilter) {
-        // 只显示竞技场卡池版本（包含"全部版本"选项）
+        // 只显示竞技场卡池版本（包含"全部竞技场版本"选项）
         const arenaVersionsSorted = arenaPoolVersions.slice().sort((a, b) => {
           const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
           const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
           return yearB - yearA;
         });
-        renderExpansionOptions(arenaVersionsSorted, true);
-        // 默认选中"全部版本"
+        renderExpansionOptions(arenaVersionsSorted, true, true);
+        // 默认选中"全部竞技场版本"
         expansionSelect.value = "";
       } else {
         // 恢复显示所有版本（包含"全部版本"选项）
-        renderExpansionOptions(allExpansions, true);
+        renderExpansionOptions(allExpansions, true, false);
       }
       loadCards(1);
     });
