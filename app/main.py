@@ -19,6 +19,7 @@ from app.routers import (
     pages as pages_router,
     uploads as uploads_router,
     ua_rank as ua_rank_router,
+    arena_stats as arena_stats_router,
 )
 
 # 确保建表（生产推荐用 Alembic 迁移）
@@ -59,5 +60,6 @@ app.include_router(votes_router.router)
 app.include_router(notifications_router.router)
 app.include_router(uploads_router.router)
 app.include_router(ua_rank_router.router)
+app.include_router(arena_stats_router.router)
 # 页面路由
 app.include_router(pages_router.router)

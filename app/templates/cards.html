@@ -45,11 +45,10 @@
       <label class="cards-label">排序：</label>
       <div class="select-wrapper">
         <select id="cards-sort-by" class="cards-select">
-          <option value="hot">热门</option>
+          <option value="win" selected>按胜率</option>
           <option value="class">按职业</option>
-          <option value="win">按胜率</option>
           <option value="mana">按水晶</option>
-          <option value="score" selected>按评分</option>
+          <option value="score">按评分</option>
         </select>
       </div>
       <button id="cards-sort-order" type="button" class="btn-secondary cards-sort-order" data-order="desc">
@@ -59,6 +58,9 @@
     </div>
 
     <div class="cards-toolbar-right">
+      {% if current_user and current_user.role.value in ['admin', 'super_admin'] %}
+      <button id="btn-sync-hdt" class="qk-btn qk-btn-primary qk-btn-sm" title="同步HSReplay竞技场卡牌胜率数据">🔄 同步HDT胜率</button>
+      {% endif %}
       <div class="btn-group" style="margin-right: 12px;">
         <button id="btn-filter-arena" class="qk-btn qk-btn-outline qk-btn-sm" title="只显示竞技场卡池卡牌">🏟️ 竞技场</button>
         <button id="btn-filter-reviewed" class="qk-btn qk-btn-outline qk-btn-sm" title="只看我点评过的卡牌">我点评过的</button>

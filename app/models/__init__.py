@@ -335,3 +335,24 @@ class Notification(Base):
     is_read = Column(Boolean, nullable=False, default=False)
     read_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArenaCardStats(Base):
+    """竞技场卡牌统计数据（来自 HSReplay）"""
+
+    __tablename__ = "arena_card_stats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    card_id = Column(Integer, nullable=False, index=True, comment="卡牌ID，对应cards表的card_id")
+    popularity = Column(Float, nullable=True, comment="热门度")
+    avg_copies_in_deck = Column(Float, nullable=True, comment="平均每套牌包含数量")
+    win_rate = Column(Float, nullable=True, comment="胜率")
+    drawn_win_rate = Column(Float, nullable=True, comment="抽到时胜率")
+    played_win_rate = Column(Float, nullable=True, comment="出场胜率")
+    num_games = Column(Integer, nullable=True, comment="参与对局数")
+    card_class = Column(String(20), nullable=False, comment="职业")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('card_id', 'card_class', name='uix_arena_card_stats_card_class'),
+    )

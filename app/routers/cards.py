@@ -6,7 +6,7 @@ from sqlalchemy import distinct, func, case
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_db, get_current_user_from_cookie
-from app.models import Card, CardReview, User, UserProfile
+from app.models import Card, CardReview, User, UserProfile, ArenaCardStats
 from app.schemas import CardOut
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
@@ -15,29 +15,29 @@ router = APIRouter(prefix="/api/cards", tags=["cards"])
 def list_cards(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user_from_cookie),
-    # 版本筛选（你下拉框用的）
+    # 版本筛选（下拉框用）
     version: Optional[str] = Query(None, description="按 cards.version 过滤"),
-    # 兼容老的 expansion 参数（不想用可以以后删）
+    # 兼容老的 expansion 参数
     expansion: Optional[str] = Query(
         None, description="兼容老参数，按 expansion 过滤（可选）"
     ),
-    # ✅ 新增：竞技场卡池版本列表筛选
+    # 竞技场卡池版本列表筛选
     arena_versions: Optional[str] = Query(
         None, description="按竞技场卡池版本过滤，逗号分隔的版本列表"
     ),
-    # ✅ 新增：职业筛选
+    # 职业筛选
     card_class: Optional[str] = Query(
         None, description="按职业过滤"
     ),
-    # ✅ 新增：稀有度筛选
+    # 稀有度筛选
     rarity: Optional[str] = Query(
         None, description="按稀有度过滤"
     ),
-    # ✅ 新增：已点评/未点评筛选（是否有任意用户点评过）
+    # 已点评/未点评筛选（是否有任意用户点评过）
     has_reviews: Optional[bool] = Query(
         None, description="筛选有点评/无点评的卡牌"
     ),
-    # ✅ 新增：筛选当前用户是否点评过（仅当前登录用户）
+    # 筛选当前用户是否点评过（仅当前登录用户）
     my_reviewed: Optional[bool] = Query(
         None, description="筛选当前用户点评过/未点评过的卡牌"
     ),
@@ -46,7 +46,7 @@ def list_cards(
         None, description="模糊搜索卡牌名"
     ),
     sort_by: Optional[str] = Query(
-        "score", description="排序字段：hot|class|win|mana|score"
+        "win", description="排序字段：class|win|mana|score"
     ),
     sort_order: str = Query(
         "desc", regex="^(asc|desc)$", description="排序方向"
@@ -54,7 +54,7 @@ def list_cards(
     page: int = Query(1, ge=1),
     page_size: int = Query(30, ge=1, le=200),
 ):
-    # 均分子查询：给“按评分”排序用
+    # 均分子查询：给"按评分"排序用
     avg_sub = (
         db.query(
             CardReview.card_id.label("cid"),
@@ -64,13 +64,22 @@ def list_cards(
         .subquery()
     )
 
-    # 热门子查询：该卡牌所有点评点赞数总和
-    hot_sub = (
+    # 根据职业筛选决定从 arena_card_stats 取哪个职业的胜率
+    # 如果选择了职业，取对应职业的数据；否则取"全部职业"的数据
+    # 注意：中立卡牌没有职业胜率，统一使用"全部职业"的数据
+    stats_class = "全部职业"  # 统一使用全部职业的胜率数据
+    
+    # 竞技场胜率子查询
+    arena_stats_sub = (
         db.query(
-            CardReview.card_id.label("cid"),
-            func.coalesce(func.sum(CardReview.upvote_count), 0).label("hot_score"),
+            ArenaCardStats.card_id.label("cid"),
+            ArenaCardStats.win_rate.label("arena_win_rate"),
+            ArenaCardStats.popularity.label("arena_popularity"),
+            ArenaCardStats.drawn_win_rate.label("arena_drawn_win_rate"),
+            ArenaCardStats.played_win_rate.label("arena_played_win_rate"),
+            ArenaCardStats.num_games.label("arena_num_games"),
         )
-        .group_by(CardReview.card_id)
+        .filter(ArenaCardStats.card_class == stats_class)
         .subquery()
     )
 
@@ -78,10 +87,14 @@ def list_cards(
         db.query(
             Card,
             avg_sub.c.avg_score.label("avg_score"),
-            hot_sub.c.hot_score.label("hot_score"),
+            arena_stats_sub.c.arena_win_rate.label("arena_win_rate"),
+            arena_stats_sub.c.arena_popularity.label("arena_popularity"),
+            arena_stats_sub.c.arena_drawn_win_rate.label("arena_drawn_win_rate"),
+            arena_stats_sub.c.arena_played_win_rate.label("arena_played_win_rate"),
+            arena_stats_sub.c.arena_num_games.label("arena_num_games"),
         )
         .outerjoin(avg_sub, Card.id == avg_sub.c.cid)
-        .outerjoin(hot_sub, Card.id == hot_sub.c.cid)
+        .outerjoin(arena_stats_sub, Card.card_id == arena_stats_sub.c.cid)
     )
 
     # 竞技场卡池筛选（优先级高于普通版本筛选）
@@ -129,12 +142,11 @@ def list_cards(
     def nulls_last(expr):
         return case((expr.is_(None), 1), else_=0)
 
-    if sort_by == "hot":
-        query = query.order_by(nulls_last(hot_sub.c.hot_score), direction(hot_sub.c.hot_score), Card.name.asc())
-    elif sort_by == "class":
+    if sort_by == "class":
         query = query.order_by(direction(Card.card_class), Card.mana_cost.asc(), Card.name.asc())
     elif sort_by == "win":
-        query = query.order_by(nulls_last(Card.arena_score), direction(Card.arena_score), Card.name.asc())
+        # 使用 arena_card_stats 表的胜率
+        query = query.order_by(nulls_last(arena_stats_sub.c.arena_win_rate), direction(arena_stats_sub.c.arena_win_rate), Card.name.asc())
     elif sort_by == "score":
         query = query.order_by(nulls_last(avg_sub.c.avg_score), direction(avg_sub.c.avg_score), Card.name.asc())
     else:  # 默认按水晶排序
@@ -151,15 +163,19 @@ def list_cards(
 
     cards = []
     avg_map: dict[int, float | None] = {}
+    win_rate_map: dict[int, float | None] = {}
     for row in rows:
-        # row: (Card, avg_score, hot_score)
+        # row: (Card, avg_score, arena_win_rate, arena_popularity, ...)
         card = row[0]
         avg_score = row[1]
+        arena_win_rate = row[2]
         cards.append(card)
         if avg_score is not None:
             avg_map[card.id] = float(avg_score)
+        if arena_win_rate is not None:
+            win_rate_map[card.id] = float(arena_win_rate)
 
-    # 补充点评均分（避免 SQL Server DISTINCT/文本问题，这里单独查均分）
+    # 补充点评均分
     card_ids = [c.id for c in cards]
     top_map = {}
 
@@ -192,7 +208,7 @@ def list_cards(
                 "reviewer": nick or uname or "",
             }
 
-    # 构造响应模型，避免给 ORM property 赋值
+    # 构造响应模型
     result: list[CardOut] = []
     for c in cards:
         top = top_map.get(c.id)
@@ -207,11 +223,12 @@ def list_cards(
                 version=c.version,
                 pic=c.pic,
                 description=c.description,
-                arena_score=c.arena_score,
+                arena_score=c.arena_score,  # 保持原来的评分数据
                 arena_win_rates=c.arena_win_rates,
                 short_review=top["content"] if top else c.short_review,
                 reviewer_nickname=top["reviewer"] if top else (c.reviewer.nickname if c.reviewer else None),
                 average_score=avg_map.get(c.id),
+                hdt_win_rate=win_rate_map.get(c.id),  # HDT 竞技场胜率
             )
         )
 
@@ -229,20 +246,16 @@ def list_versions(db: Session = Depends(get_db)):
     下拉框用的版本列表：
     - 实际返回的是 cards.version
     - 排序规则：按 expansion 中 () 里的年份倒序（新的在前）
-      比如 '天马年 (2024)' 会排在 '独狼年 (2023)' 前面
     """
-    # 拿到 version + expansion 的去重组合
     rows = db.query(distinct(Card.version), Card.expansion).all()
 
     items = []
     for version, expansion in rows:
-        # 没 version 就没必要出现在下拉框里
         if not version:
             continue
 
         year = 0
         if expansion:
-            # 匹配括号里的 4 位数字年份：(... 2024)
             m = re.search(r"\((\d{4})\)", expansion)
             if m:
                 year = int(m.group(1))
@@ -255,10 +268,7 @@ def list_versions(db: Session = Depends(get_db)):
             }
         )
 
-    # 按年份倒序，其次按 version 倒序
     items.sort(key=lambda x: (x["year"], x["version"]), reverse=True)
-
-    # 前端只需要 version 文本
     return [item["version"] for item in items]
 
 @router.get("/classes", response_model=List[str])

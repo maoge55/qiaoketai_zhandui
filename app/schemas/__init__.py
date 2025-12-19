@@ -187,11 +187,12 @@ class CardOut(BaseModel):
     version: Optional[str]
     pic: Optional[str]
     description: Optional[str]
-    arena_score: Optional[int]
+    arena_score: Optional[float]  # 老版评分数据
     arena_win_rates: Any = None
     short_review: Optional[str]
     reviewer_nickname: Optional[str] = None
-    average_score: float | None = None
+    average_score: float | None = None  # 用户点评均分
+    hdt_win_rate: float | None = None  # HDT 竞技场胜率
     class Config:
         from_attributes = True
 

@@ -1320,16 +1320,11 @@ async function initCardsPage() {
   }
 
   function buildCardHtml(card, selectedClass) {
-    // 评分：优先用点评均分，其次用单卡 arena_score，统一 0-5 量表
+    // 评分：只用点评均分（average_score）
     let scoreText = "？";
     let scoreClass = "score-neutral";
 
-    const pickedScore =
-      card.average_score != null
-        ? Number(card.average_score)
-        : card.arena_score != null
-          ? Number(card.arena_score)
-          : null;
+    const pickedScore = card.average_score != null ? Number(card.average_score) : null;
 
     if (pickedScore !== null && !Number.isNaN(pickedScore)) {
       scoreText = pickedScore.toFixed(1);
@@ -1343,37 +1338,46 @@ async function initCardsPage() {
       }
     }
 
-    // 胜率
+    // 胜率：使用 hdt_win_rate（来自 arena_card_stats 表的 HDT 胜率数据）
     let winrateText = "暂无胜率数据";
-    let winData = card.arena_win_rates || null;
-
-    if (typeof winData === "string") {
-      try {
-        winData = JSON.parse(winData);
-      } catch (e) {
-        winData = null;
+    
+    if (card.hdt_win_rate != null) {
+      const v = Number(card.hdt_win_rate);
+      if (!Number.isNaN(v) && v > 0) {
+        winrateText = `胜率：${v.toFixed(1)}%`;
       }
-    }
+    } else {
+      // 兼容旧的 arena_win_rates JSON 数据
+      let winData = card.arena_win_rates || null;
 
-    if (winData && typeof winData === "object") {
-      const values = [];
-
-      // 如果有选职业，优先显示该职业胜率
-      if (selectedClass && winData[selectedClass] != null) {
-        const v = Number(winData[selectedClass]);
-        if (!Number.isNaN(v)) {
-          winrateText = `${selectedClass} 胜率：${v.toFixed(1)}%`;
+      if (typeof winData === "string") {
+        try {
+          winData = JSON.parse(winData);
+        } catch (e) {
+          winData = null;
         }
-      } else {
-        // 否则展示平均胜率
-        Object.values(winData).forEach((v) => {
-          const n = Number(v);
-          if (!Number.isNaN(n)) values.push(n);
-        });
-        if (values.length) {
-          const avg =
-            values.reduce((sum, v) => sum + v, 0) / values.length;
-          winrateText = `平均胜率：${avg.toFixed(1)}%`;
+      }
+
+      if (winData && typeof winData === "object") {
+        const values = [];
+
+        // 如果有选职业，优先显示该职业胜率
+        if (selectedClass && winData[selectedClass] != null) {
+          const v = Number(winData[selectedClass]);
+          if (!Number.isNaN(v)) {
+            winrateText = `${selectedClass} 胜率：${v.toFixed(1)}%`;
+          }
+        } else {
+          // 否则展示平均胜率
+          Object.values(winData).forEach((v) => {
+            const n = Number(v);
+            if (!Number.isNaN(n)) values.push(n);
+          });
+          if (values.length) {
+            const avg =
+              values.reduce((sum, v) => sum + v, 0) / values.length;
+            winrateText = `平均胜率：${avg.toFixed(1)}%`;
+          }
         }
       }
     }
@@ -1601,6 +1605,23 @@ async function initCardsPage() {
 
   await loadExpansions();
   await loadArenaPoolVersions();
+  
+  // 默认选中竞技场按钮
+  if (btnFilterArena && arenaPoolVersions.length > 0) {
+    arenaFilter = true;
+    btnFilterArena.classList.add("active");
+    // 只显示竞技场卡池版本
+    const arenaVersionsSorted = arenaPoolVersions.slice().sort((a, b) => {
+      const yearA = parseInt((a.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+      const yearB = parseInt((b.match(/\((\d{4})\)/) || [])[1] || "0", 10);
+      return yearB - yearA;
+    });
+    renderExpansionOptions(arenaVersionsSorted);
+    if (arenaVersionsSorted.length > 0) {
+      expansionSelect.value = arenaVersionsSorted[0];
+    }
+  }
+  
   await loadCards(1);
 
   // 分页按钮事件（底部）
@@ -1743,6 +1764,34 @@ async function initCardsPage() {
         if (btnFilterReviewed) btnFilterReviewed.classList.remove("active");
       }
       loadCards(1);
+    });
+  }
+
+  // 同步HDT胜率按钮（管理员）
+  const btnSyncHdt = document.getElementById("btn-sync-hdt");
+  if (btnSyncHdt) {
+    btnSyncHdt.addEventListener("click", async () => {
+      if (!confirm("确定要同步HSReplay竞技场卡牌胜率数据吗？这可能需要几秒钟时间。")) return;
+      
+      btnSyncHdt.disabled = true;
+      btnSyncHdt.textContent = "⏳ 同步中...";
+      
+      try {
+        const res = await fetch("/api/arena/sync-hdt-stats", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "同步失败");
+        
+        alert(data.message || "同步成功");
+        loadCards(1); // 刷新卡牌列表
+      } catch (err) {
+        alert("同步失败: " + (err.message || "未知错误"));
+      } finally {
+        btnSyncHdt.disabled = false;
+        btnSyncHdt.textContent = "🔄 同步HDT胜率";
+      }
     });
   }
 
