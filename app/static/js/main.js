@@ -1832,11 +1832,19 @@ async function initCardsPage() {
               btnSyncHdtRef.disabled = false;
               btnSyncHdtRef.textContent = "🔄 同步HDT胜率";
             }
-            // 自动刷新页面
-            loadCards(1);
-            if (data.last_sync_result?.success) {
-              console.log("HDT胜率同步完成，已自动刷新数据");
+            
+            // 显示同步结果
+            const result = data.last_sync_result;
+            if (result) {
+              if (result.success) {
+                alert(`✅ 同步成功！\n${result.message}`);
+                // 自动刷新页面
+                loadCards(1);
+              } else {
+                alert(`❌ 同步失败！\n${result.message || result.error || '未知错误'}`);
+              }
             }
+            
             syncVersion = data.sync_version;
           } else {
             // 版本未变化且不在同步中，停止轮询
