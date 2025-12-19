@@ -261,17 +261,17 @@ def import_json_stats(
 ):
     """
     从本地生成的 JSON 文件导入竞技场统计数据（仅管理员可用）
-    JSON 文件应放在 app/static/uploads/arena_stats_data.json
+    JSON 文件应放在项目根目录 arena_stats_data.json
     """
     import json
     import os
     
-    json_path = os.path.join("app", "static", "uploads", "arena_stats_data.json")
+    json_path = "arena_stats_data.json"
     
     if not os.path.exists(json_path):
         raise HTTPException(
             status_code=404,
-            detail=f"JSON 文件不存在，请先将 arena_stats_data.json 上传到 {json_path}"
+            detail=f"JSON 文件不存在，请先将 arena_stats_data.json 上传到项目根目录"
         )
     
     try:

@@ -6,6 +6,11 @@ ex{% extends "admin_base.html" %}
   <h2 class="section-title">竞技场卡池版本配置</h2>
   <p class="meta">选择当前竞技场卡池中的卡牌版本，用于前端"只显示竞技场卡牌"筛选。</p>
 
+  <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+    <button type="button" id="btn-import-json" class="qk-btn qk-btn-secondary">📥 导入胜率数据</button>
+    <span id="import-status" style="color: var(--text-secondary);"></span>
+  </div>
+
   <div id="arena-pool-loading" style="text-align:center; padding: 40px;">
     加载中...
   </div>
@@ -172,5 +177,41 @@ function getToken() {
     }, 3000);
   });
 })();
+
+// 导入胜率数据按钮
+document.getElementById("btn-import-json").addEventListener("click", async function() {
+  const btn = this;
+  const statusEl = document.getElementById("import-status");
+  
+  if (!confirm("确定从 JSON 文件导入胜率数据吗？\n(需要先将 arena_stats_data.json 上传到项目根目录)")) {
+    return;
+  }
+  
+  btn.disabled = true;
+  statusEl.textContent = "导入中...";
+  statusEl.style.color = "var(--text-secondary)";
+  
+  try {
+    const res = await fetch("/api/arena/import-json", { method: "POST" });
+    const data = await res.json();
+    
+    if (res.ok && data.success) {
+      statusEl.textContent = "✅ " + data.message;
+      statusEl.style.color = "var(--accent)";
+    } else {
+      statusEl.textContent = "❌ " + (data.detail || data.message || "导入失败");
+      statusEl.style.color = "#ef4444";
+    }
+  } catch (err) {
+    statusEl.textContent = "❌ 网络错误: " + err.message;
+    statusEl.style.color = "#ef4444";
+  }
+  
+  btn.disabled = false;
+  
+  setTimeout(() => {
+    statusEl.textContent = "";
+  }, 5000);
+});
 </script>
 {% endblock %}
