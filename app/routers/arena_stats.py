@@ -4,7 +4,7 @@ import threading
 from datetime import datetime
 from typing import Optional
 
-import httpx
+import requests
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
@@ -64,14 +64,13 @@ class SyncState:
 
 sync_state = SyncState()
 
-# 完整模拟浏览器请求头，尽可能绕过反爬虫检测
-# 注意：不设置 Accept-Encoding，让 httpx 自动处理压缩
+# 完整模拟浏览器请求头
 BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
     "Origin": "https://hsreplay.net",
-    "Referer": "https://hsreplay.net/",
+    "Referer": "https://hsreplay.net/cards/",
     "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
     "Sec-Ch-Ua-Mobile": "?0",
     "Sec-Ch-Ua-Platform": '"Windows"',
@@ -87,10 +86,9 @@ def do_sync_hdt_stats():
     try:
         # 第一步：获取卡牌 ID 映射
         cards_url = "https://api.hearthstonejson.com/v1/latest/zhCN/cards.json"
-        with httpx.Client(timeout=60.0, headers=BROWSER_HEADERS) as client:
-            resp = client.get(cards_url)
-            resp.raise_for_status()
-            cards_data = resp.json()
+        resp = requests.get(cards_url, headers=BROWSER_HEADERS, timeout=60)
+        resp.raise_for_status()
+        cards_data = resp.json()
         
         # 建立 card_id_str -> dbfId 的映射
         card_dict = {}
@@ -102,10 +100,9 @@ def do_sync_hdt_stats():
         
         # 第二步：获取 HSReplay 竞技场统计数据
         stats_url = "https://hsreplay.net/api/v1/arena/card_stats/free/?ArenaTimestampRangeFilter=LAST_4_DAYS"
-        with httpx.Client(timeout=60.0, headers=BROWSER_HEADERS) as client:
-            resp = client.get(stats_url)
-            resp.raise_for_status()
-            stats_data = resp.json()
+        resp = requests.get(stats_url, headers=BROWSER_HEADERS, timeout=60)
+        resp.raise_for_status()
+        stats_data = resp.json()
         
         data_section = stats_data.get("data", {})
         
